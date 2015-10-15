@@ -15,17 +15,29 @@
 #    under the License.
 
 
-"""
-test_packetary
-----------------------------------
 
-Tests for `packetary` module.
-"""
-
-from packetary.tests import base
+import hashlib
 
 
-class TestPacketary(base.TestCase):
+def _checksum(method):
+    """Gets the function to calculate checksum,
+    with selected method.
+    """
 
-    def test_something(self):
-        pass
+    def calc(f):
+        s = method()
+        with open(f, "rb") as stream:
+            while True:
+                chunk = stream.read(1024)
+                if not chunk:
+                    break
+                s.update(chunk)
+        return s.hexdigits()
+    return calc
+
+
+md5 = _checksum(hashlib.md5)
+
+sha1 = _checksum(hashlib.sha1)
+
+sha256 = _checksum(hashlib.sha256)

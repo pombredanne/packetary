@@ -15,17 +15,22 @@
 #    under the License.
 
 
-"""
-test_packetary
-----------------------------------
-
-Tests for `packetary` module.
-"""
-
-from packetary.tests import base
+import abc
+import six
 
 
-class TestPacketary(base.TestCase):
+@six.add_metaclass(abc.ABCMeta)
+class Repository(object):
+    """Abstraction to manage repositories."""
 
-    def test_something(self):
-        pass
+    @abc.abstractmethod
+    def load(self, url, consumer):
+        """Load the packages from url."""
+
+    @abc.abstractmethod
+    def clone(self, provider, destination):
+        """Saves the repository the specified path."""
+
+    @abc.abstractmethod
+    def rebuild_index(self, provider, destination):
+        """Rebuilds index."""

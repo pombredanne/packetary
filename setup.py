@@ -14,6 +14,7 @@
 # limitations under the License.
 
 # THIS FILE IS MANAGED BY THE GLOBAL REQUIREMENTS REPO - DO NOT EDIT
+import os
 import setuptools
 
 # In python < 2.7.4, a lazy loading of package `pbr` will break
@@ -25,6 +26,15 @@ except ImportError:
     pass
 
 
+def find_requires():
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    with open('{0}/requirements.txt'.format(dir_path), 'r') as reqs:
+        requirements = reqs.readlines()
+    print(requirements)
+    return requirements
+
+
 setuptools.setup(
     setup_requires=['pbr'],
+    install_requires=find_requires(),
     pbr=True)

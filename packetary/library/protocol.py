@@ -15,17 +15,22 @@
 #    under the License.
 
 
-"""
-test_packetary
-----------------------------------
-
-Tests for `packetary` module.
-"""
-
-from packetary.tests import base
+import abc
+import six
 
 
-class TestPacketary(base.TestCase):
+@six.add_metaclass(abc.ABCMeta)
+class FileTransferProtocol(object):
+    """Package."""
 
-    def test_something(self):
-        pass
+    @abc.abstractmethod
+    def open_stream(self, url):
+        """Opens the remote file."""
+
+    @abc.abstractmethod
+    def sync(self, url, dst, meta=None):
+        """Synchronises the remote file.
+        :param url: the source url
+        :param dst: the destination file path
+        :param meta: the source meta information
+        """

@@ -15,17 +15,11 @@
 #    under the License.
 
 
-"""
-test_packetary
-----------------------------------
-
-Tests for `packetary` module.
-"""
-
-from packetary.tests import base
+from . import deb_repo
+from . import yum_repo
 
 
-class TestPacketary(base.TestCase):
-
-    def test_something(self):
-        pass
+types = {
+    "deb": deb_repo.DebRepository,
+    "yum": yum_repo.YumRepository
+}

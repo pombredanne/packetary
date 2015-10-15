@@ -13,19 +13,3 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-
-"""
-test_packetary
-----------------------------------
-
-Tests for `packetary` module.
-"""
-
-from packetary.tests import base
-
-
-class TestPacketary(base.TestCase):
-
-    def test_something(self):
-        pass
