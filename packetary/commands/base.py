@@ -85,16 +85,18 @@ class BaseListCommand(display.DisplayCommandBase, BaseCommand):
 
         group = next(matching_groups, parser)
 
-        group.add_argument('-s',
-                           '--sort-columns',
-                           type=str,
-                           nargs='+',
-                           choices=self.columns,
-                           metavar='SORT_COLUMN',
-                           default=[self.columns[0]],
-                           help='Space separated list of keys for sorting '
-                                'the data. Defaults to id. Wrong values '
-                                'are ignored.')
+        group.add_argument(
+            '-s',
+            '--sort-columns',
+            type=str,
+            nargs='+',
+            choices=self.columns,
+            metavar='SORT_COLUMN',
+            default=[self.columns[0]],
+            help='Space separated list of keys for sorting '
+                 'the data. Defaults to id. Wrong values '
+                 'are ignored.'
+        )
 
         # Monkey patch the columns argument
         matching_actions = (
@@ -110,18 +112,16 @@ class BaseListCommand(display.DisplayCommandBase, BaseCommand):
     def produce_output(self, parsed_args, column_names, data):
         indexes = [column_names.index(c) for c in parsed_args.sort_columns]
         data.sort(key=lambda x: [x[i] for i in indexes])
-        if parsed_args.columns:
-            columns_to_include = [c for c in column_names
-                                  if c in parsed_args.columns]
-            # Set up argument to compress()
-            selector = [(c in columns_to_include)
-                        for c in column_names]
-            data = self._compress_iterable(data, selector)
-
         # TODO implement custom formatter
-        # The table formatter is not able to print
-        # large array of data.
-        # Use direct print to stdout instead
+        # The table formatter is not able to print the large data.
+
+        if parsed_args.columns:
+            columns = set(parsed_args.columns)
+            idx_to_include = [
+                i for i, c in enumerate(column_names) if c in columns
+            ]
+            data = ((row[i] for i in idx_to_include) for row in data)
+
         stdout = self.app.stdout
         for row in data:
             stdout.write(six.text_type("; ").join(row))

@@ -31,11 +31,14 @@ class ListUnresolved(MakeContextMixin, BaseListCommand):
         index = Index()
         repo.load(parsed_args.url, index.add)
         format_obj = self.format_object
-        unresolved = [format_obj(x) for x in index.get_unresolved()]
+        unresolved = [
+            format_obj(parsed_args.columns, x)
+            for x in index.get_unresolved()
+        ]
         return self.columns, unresolved
 
 
 if __name__ == "__main__":
     from packetary.app import test
-    test("unresolved", ListUnresolved, ["unresolved", "-U", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-T", "yum", '-v', '-v', '--debug'])
-    # test("unresolved", ListUnresolved, ["unresolved", "-U", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-T", "deb", '-v', '-v', '--debug'])
+    test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
+    # test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])

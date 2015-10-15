@@ -41,5 +41,6 @@ class ListPackages(MakeContextMixin, BaseListCommand):
 
 if __name__ == "__main__":
     from packetary.app import test
-    # test("list", ListPackages, ["list", "-U", "http://mirror.yandex.ru/centos/7.1.1503/os", "-T", "yum", '-v', '-v', '--debug'])
-    test("list", ListPackages, ["list", "-U", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-T", "deb", '-v', '-v', '--debug'])
+    # test("list", ListPackages, ["list", "-u", "http://mirror.yandex.ru/centos/7.1.1503/os", "-t", "yum", '-v', '-v', '--debug'])
+    test("list", ListPackages, ["list", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+                                '--column', 'name', '--sort-column', 'size'])
