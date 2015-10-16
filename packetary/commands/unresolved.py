@@ -15,7 +15,7 @@
 #    under the License.
 
 from packetary.commands.base import BaseProduceOutputCommand
-from packetary.library.index import Index
+from packetary.library.api import get_unresolved_depends
 
 
 class ListUnresolved(BaseProduceOutputCommand):
@@ -26,15 +26,9 @@ class ListUnresolved(BaseProduceOutputCommand):
     )
 
     def take_repo_action(self, driver, parsed_args):
-        index = Index()
-        driver.load(parsed_args.url, index.add)
-        format_obj = self.format_object
-        unresolved = [
-            format_obj(x)
-            for x in index.get_unresolved()
-        ]
-        return unresolved
-
+        return get_unresolved_depends(
+            driver, parsed_args.url, self.format_object
+        )
 
 if __name__ == "__main__":
     from packetary.app import test

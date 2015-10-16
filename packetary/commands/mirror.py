@@ -15,7 +15,7 @@
 #    under the License.
 
 from packetary.commands.base import BaseRepoCommand
-from packetary.library.index import Index
+from packetary.library.api import createmirror
 
 
 class CreateMirror(BaseRepoCommand):
@@ -36,27 +36,22 @@ class CreateMirror(BaseRepoCommand):
         return parser
 
     def take_repo_action(self, driver, parsed_args):
-        packages = Index()
-        driver.load(parsed_args.url, packages.add)
-        if parsed_args.requires:
-            requires = Index()
-            driver.load(parsed_args.requires, requires.add)
-            requires = requires.get_unresolved()
-            if len(requires) == 0:
-                self.app.stdout.write("Nothing to copy.\n")
-                return
-            packages = packages.resolve(requires)
-        driver.clone(packages, parsed_args.destination)
-        self.app.stdout.write("Operation completed successfully.\n")
+        packages_count = createmirror(
+            driver,
+            parsed_args.destination,
+            parsed_args.url,
+            parsed_args.requires or None
+        )
+        self.app.stdout.write("Packages copied: %d.\n" % packages_count)
 
 
 if __name__ == "__main__":
     from packetary.app import test
-    test("mirror", CreateMirror, [
-        "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
-        "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
-    ])
     # test("mirror", CreateMirror, [
-    #     "mirror", "-u", "http://mirror.yandex.ru/centos/6.7/os", "-t", "yum", '-v', '-v', '--debug',
-    #     "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
+    #     "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+    #     "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
     # ])
+    test("mirror", CreateMirror, [
+        "mirror", "-u", "http://mirror.yandex.ru/centos/6.7/os", "-t", "yum", '-v', '-v', '--debug',
+        "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
+    ])

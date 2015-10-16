@@ -79,14 +79,6 @@ class BaseRepoCommand(command.Command):
 class BaseProduceOutputCommand(BaseRepoCommand):
     columns = ()
 
-    @property
-    def formatter_namespace(self):
-        return 'cliff.formatter.show'
-
-    @property
-    def formatter_default(self):
-        return 'value'
-
     def get_parser(self, prog_name):
         parser = super(BaseProduceOutputCommand, self).get_parser(prog_name)
 

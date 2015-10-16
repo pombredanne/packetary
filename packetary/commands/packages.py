@@ -15,6 +15,7 @@
 #    under the License.
 
 from packetary.commands.base import BaseProduceOutputCommand
+from packetary.library.api import get_packages
 
 
 class ListPackages(BaseProduceOutputCommand):
@@ -31,11 +32,7 @@ class ListPackages(BaseProduceOutputCommand):
     )
 
     def take_repo_action(self, driver, parsed_args):
-        packages = []
-        format_package = self.format_object
-        append = packages.append
-        driver.load(parsed_args.url, lambda x: append(format_package(x)))
-        return packages
+        return get_packages(driver, parsed_args.url, self.format_object)
 
 
 if __name__ == "__main__":

@@ -90,6 +90,13 @@ class Index(object):
     def __iter__(self):
         return self.get_packages()
 
+    def __len__(self):
+        return reduce(
+            lambda x, y: x + len(y),
+            six.itervalues(self.packages),
+            0
+        )
+
     def get_packages(self):
         """Gets the sorted list of packages."""
         for versions in six.itervalues(self.packages):

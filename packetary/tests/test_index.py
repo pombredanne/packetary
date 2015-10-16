@@ -115,3 +115,15 @@ class TestIndex(base.TestCase):
             p2, index.find(Relation("package0_p", VersionRange("eq", 2)))
         )
         self.assertIsNone(index.find(Relation("package0_p", VersionRange("lt", 1))))
+
+    def test_len(self):
+        index = Index()
+        for p in self._get_packages(3, version=1):
+            index.add(p)
+        self.assertEqual(3, len(index))
+        for p in self._get_packages(3, version=2):
+            index.add(p)
+        self.assertEqual(6, len(index))
+        for p in self._get_packages(3, version=2):
+            index.add(p)
+        self.assertEqual(6, len(index))
