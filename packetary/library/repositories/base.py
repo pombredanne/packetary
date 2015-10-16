@@ -74,18 +74,18 @@ class RepositoryWithIndex(repository.Repository):
                     url, consumer
                 )
 
-    def rebuild_index(self, provider, destination):
+    def rebuild_index(self, producer, destination):
         """See the Repository.rebuild_index."""
         index_writer = self.create_index_writer(destination)
-        for package in provider:
+        for package in producer:
             index_writer.add(package)
         index_writer.flush()
 
-    def clone(self, provider, destination):
+    def clone(self, producer, destination):
         index_writer = self.create_index_writer(destination)
 
         with self.context.get_execution_scope() as scope:
-            for package in provider:
+            for package in producer:
                 scope.execute(self._replicate_package, package, destination)
                 index_writer.add(package)
         index_writer.flush()

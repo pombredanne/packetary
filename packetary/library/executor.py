@@ -90,12 +90,10 @@ class Executor(object):
                 if task is Executor._stopper:
                     break
 
-                if self._closed:
-                    # only clear queue
-                    continue
-
                 func, on_complete = task
                 try:
+                    if self._closed:
+                        raise RuntimeError("Closed.")
                     func()
                     on_complete(None)
                 except Exception as e:
@@ -121,7 +119,7 @@ class ExecutionScope(object):
 
     def execute(self, func, *args, **kwargs):
         if 0 <= self.ignore_errors < self.errors:
-            raise RuntimeError("too many errors.")
+            raise RuntimeError("Too many errors.")
 
         self.executor.execute(
             functools.partial(func, *args, **kwargs), self.on_complete

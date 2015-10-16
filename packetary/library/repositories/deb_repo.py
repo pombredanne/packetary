@@ -15,12 +15,11 @@
 from bintrees import FastRBTree
 from collections import defaultdict
 from debian import deb822
-from debian import debian_support
 import gzip
 import os
 import six
 
-from packetary.library import package
+from packetary.library.packages import DebPackage
 from packetary.library.gzip_stream import GzipDecompress
 
 from .base import IndexWriter
@@ -28,102 +27,12 @@ from .base import logger
 from .base import RepositoryWithIndex
 
 
-_OPERATORS = {
-    '>>': 'gt',
-    '<<': 'lt',
-    '=': 'eq',
-    '>=': 'ge',
-    '<=': 'le',
-}
-
 _ARCH_MAPPING = {
     'amd64': 'x86_64',
     'i386': 'i386',
     'all': '*',
     'x86_64': 'amd64',
 }
-
-_Version = debian_support.Version
-
-
-def _get_version_range(rel_version):
-    if rel_version is None:
-        return package.VersionRange()
-    return package.VersionRange(
-        _OPERATORS[rel_version[0]],
-        rel_version[1],
-    )
-
-
-class DebPackage(package.Package):
-    """Debian package."""
-
-    def __init__(self, base_url, repo, dpkg):
-        self.base_url = base_url
-        self.repo = repo
-        self.dpkg = dpkg
-        self._version = _Version(dpkg['version'])
-        self._size = int(dpkg['size'])
-
-    @property
-    def name(self):
-        return self.dpkg['package']
-
-    @property
-    def version(self):
-        return self._version
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def checksum(self):
-        if 'sha1' in self.dpkg:
-            return 'sha1', self.dpkg['sha1']
-        if 'MD5sum' in self.dpkg:
-            return 'md5', self.dpkg['MD5sum']
-        return None, None
-
-    @property
-    def filename(self):
-        return self.dpkg["Filename"]
-
-    @property
-    def url(self):
-        return self.base_url + "/../" + self.dpkg["Filename"]
-
-    @property
-    def requires(self):
-        return self._get_relations('depends')
-
-    @property
-    def provides(self):
-        return self._get_relations('provides')
-
-    @property
-    def obsoletes(self):
-        return self._get_relations('replaces')
-
-    def _get_relations(self, name):
-        if hasattr(self, '_' + name):
-            return getattr(self, '_' + name)
-
-        relations = list()
-        for variants in self.dpkg.relations[name]:
-            choice = None
-            for v in reversed(variants):
-                choice = package.Relation(
-                    v['name'],
-                    _get_version_range(v.get('version')),
-                    choice
-                )
-
-            if choice is not None:
-                relations.append(choice)
-
-        setattr(self, '_' + name, relations)
-        return relations
 
 
 class DebIndexWriter(IndexWriter):
@@ -156,7 +65,7 @@ class DebIndexWriter(IndexWriter):
                 pkg_iter = deb822.Packages.iter_paragraphs(stream)
                 for dpkg in pkg_iter:
                     packages.insert(
-                        DebPackage(destination, repo, dpkg), None
+                        DebPackage(dpkg, destination, repo), None
                     )
         if not os.path.exists(path):
             os.makedirs(path)
@@ -211,7 +120,7 @@ class DebRepository(RepositoryWithIndex):
             stream = GzipDecompress(connection.open_stream(index_file))
             pkg_iter = deb822.Packages.iter_paragraphs(stream)
             for dpkg in pkg_iter:
-                consumer(DebPackage(baseurl, repo, dpkg))
+                consumer(DebPackage(dpkg, baseurl, repo))
         logger.info(
             "packages from %s has been loaded successfully.", index_file
         )

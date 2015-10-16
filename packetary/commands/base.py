@@ -17,7 +17,6 @@
 import abc
 
 from cliff import command
-from cliff import display
 import signal
 import six
 
@@ -62,7 +61,7 @@ class BaseCommand(command.Command):
         """See the Command.take_action."""
 
 
-class BaseListCommand(display.DisplayCommandBase, BaseCommand):
+class BaseProduceOutputCommand(BaseCommand):
     columns = ()
 
     @property
@@ -74,17 +73,21 @@ class BaseListCommand(display.DisplayCommandBase, BaseCommand):
         return 'value'
 
     def get_parser(self, prog_name):
-        parser = super(BaseListCommand, self).get_parser(prog_name)
+        parser = super(BaseProduceOutputCommand, self).get_parser(prog_name)
 
-        # Add sorting key argument to the output formatters group
-        # if it exists. If not -- add is to the general group.
-        matching_groups = (
-            x for x in getattr(parser, '_action_groups', [])
-            if x.title == 'output formatters'
+        group = parser.add_argument_group(
+            title='output formatter',
+            description='output formatter options',
         )
-
-        group = next(matching_groups, parser)
-
+        group.add_argument(
+            '-c', '--column',
+            nargs='+',
+            choices=self.columns,
+            dest='columns',
+            metavar='COLUMN',
+            default=[],
+            help='Space separated list of columns to include.',
+        )
         group.add_argument(
             '-s',
             '--sort-columns',
@@ -97,35 +100,55 @@ class BaseListCommand(display.DisplayCommandBase, BaseCommand):
                  'the data. Defaults to id. Wrong values '
                  'are ignored.'
         )
-
-        # Monkey patch the columns argument
-        matching_actions = (
-            x for x in getattr(group, '_actions') if x.dest == 'columns'
+        group.add_argument(
+            '--sep',
+            type=six.text_type,
+            metavar='ROW SEPARATOR',
+            default=six.text_type('; '),
+            help='The row separator.'
         )
-
-        action = next(matching_actions, None)
-        if action is not None:
-            action.choices = self.columns
 
         return parser
 
-    def produce_output(self, parsed_args, column_names, data):
-        indexes = [column_names.index(c) for c in parsed_args.sort_columns]
-        data.sort(key=lambda x: [x[i] for i in indexes])
-        # TODO implement custom formatter
-        # The table formatter is not able to print the large data.
+    def produce_output(self, parsed_args, data):
+        indexes = dict(
+            (c, i) for i, c in enumerate(self.columns)
+        )
+        sort_index = [indexes[c] for c in parsed_args.sort_columns]
+        if isinstance(data, list):
+            data.sort(key=lambda x: [x[i] for i in sort_index])
+        else:
+            data = sorted(data, key=lambda x: [x[i] for i in sort_index])
 
         if parsed_args.columns:
-            columns = set(parsed_args.columns)
-            idx_to_include = [
-                i for i, c in enumerate(column_names) if c in columns
+            include_index = [
+                indexes[c] for c in parsed_args.columns
             ]
-            data = ((row[i] for i in idx_to_include) for row in data)
+            data = ((row[i] for i in include_index) for row in data)
+            columns = parsed_args.columns
+        else:
+            columns = self.columns
 
         stdout = self.app.stdout
+        sep = parsed_args.sep
+
+        # header
+        stdout.write("# ")
+        stdout.write(sep.join(columns))
+        stdout.write("\n")
+
         for row in data:
-            stdout.write(six.text_type("; ").join(row))
+            stdout.write(sep.join(row))
             stdout.write("\n")
+
+    def run(self, parsed_args):
+        # Use custom output producer, because the
+        # cliff.lister with default formatters does not work
+        # with large arrays of data
+        # TODO write custom formatter, that supports data streaming
+        data = self.take_action(parsed_args)
+        self.produce_output(parsed_args, data)
+        return 0
 
     @staticmethod
     def format_value(val):
@@ -146,7 +169,7 @@ class BaseListCommand(display.DisplayCommandBase, BaseCommand):
 @six.add_metaclass(abc.ABCMeta)
 class MakeContextMixin(object):
     @abc.abstractmethod
-    def take_action_in_context(self, context, parsed_args):
+    def take_action_with_context(self, context, parsed_args):
         """Takes action within context."""
 
     def take_action(self, parsed_args):
@@ -154,6 +177,6 @@ class MakeContextMixin(object):
         context = Context(self.app_args.__dict__)
         signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
         try:
-            return self.take_action_in_context(context, parsed_args)
+            return self.take_action_with_context(context, parsed_args)
         finally:
             context.shutdown()

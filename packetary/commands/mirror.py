@@ -36,7 +36,7 @@ class CreateMirror(MakeContextMixin, BaseCommand):
         )
         return parser
 
-    def take_action_in_context(self, context, parsed_args):
+    def take_action_with_context(self, context, parsed_args):
         repo = context.create_repository(parsed_args.type, parsed_args.arch)
         packages = Index()
         repo.load(parsed_args.url, packages.add)

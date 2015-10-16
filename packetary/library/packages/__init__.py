@@ -14,23 +14,5 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-import abc
-import six
-
-
-@six.add_metaclass(abc.ABCMeta)
-class Repository(object):
-    """Abstraction to manage repositories."""
-
-    @abc.abstractmethod
-    def load(self, url, consumer):
-        """Load the packages from url."""
-
-    @abc.abstractmethod
-    def clone(self, producer, destination):
-        """Saves the repository the specified path."""
-
-    @abc.abstractmethod
-    def rebuild_index(self, producer, destination):
-        """Rebuilds index."""
+from .deb_package import DebPackage
+from .yum_package import YumPackage

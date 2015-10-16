@@ -14,31 +14,31 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.commands.base import BaseListCommand
+from packetary.commands.base import BaseProduceOutputCommand
 from packetary.commands.base import MakeContextMixin
 from packetary.library.index import Index
 
 
-class ListUnresolved(MakeContextMixin, BaseListCommand):
+class ListUnresolved(MakeContextMixin, BaseProduceOutputCommand):
     columns = (
         "package",
         "version",
         "choice",
     )
 
-    def take_action_in_context(self, context, parsed_args):
+    def take_action_with_context(self, context, parsed_args):
         repo = context.create_repository(parsed_args.type, parsed_args.arch)
         index = Index()
         repo.load(parsed_args.url, index.add)
         format_obj = self.format_object
         unresolved = [
-            format_obj(parsed_args.columns, x)
+            format_obj(x)
             for x in index.get_unresolved()
         ]
-        return self.columns, unresolved
+        return unresolved
 
 
 if __name__ == "__main__":
     from packetary.app import test
-    test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
-    # test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])
+    # test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
+    test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])
