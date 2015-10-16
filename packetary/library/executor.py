@@ -62,10 +62,9 @@ class Executor(object):
             self.queue.put((func, _callback(on_complete)))
 
     def shutdown(self, wait=True):
-        """Shutdowns service."""
+        """Shutdowns thread-pool."""
         if self._closed:
             return
-        self._closed = True
         logger.debug("Shutting down executor...")
         threads_num = len(self.threads)
         while threads_num:
@@ -81,6 +80,7 @@ class Executor(object):
         else:
             while self.threads:
                 self.threads.pop()
+        self._closed = True
         logger.debug("Completed.")
 
     def _worker(self):

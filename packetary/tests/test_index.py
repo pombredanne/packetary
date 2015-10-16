@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-
 import six
 
 from packetary.library.index import Index
