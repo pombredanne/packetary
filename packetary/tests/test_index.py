@@ -78,6 +78,20 @@ class TestIndex(base.TestCase):
         )
         self.assertIsNone(index.find(Relation("package0", VersionRange("gt", 2))))
 
+    def test_find_newest_package(self):
+        index = Index()
+        p1, p2 = self._get_packages(2, version=2)
+        p2.obsoletes.append(Relation(p1.name, VersionRange("lt", p1.version)))
+        index.add(p1)
+        index.add(p2)
+
+        self.assertIs(
+            p1, index.find(Relation(p1.name, VersionRange("eq", p1.version)))
+        )
+        self.assertIs(
+            p2, index.find(Relation(p1.name, VersionRange("eq", 1)))
+        )
+
     def test_find_obsolete(self):
         index = Index()
         p1 = self._get_packages(version=1)[0]

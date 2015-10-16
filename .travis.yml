@@ -1,23 +1,24 @@
 language: python
+sudo: false
+
 python:
   - "2.6"
   - "2.7"
   - "3.5"
-install:
-  - pip install .
-sudo: required
 
-services:
-  - docker
+env:
+  - PACKETARY_ORIGIN_CENTOS="http://mirror.yandex.ru/centos/6.7/os"
+  - PACKETARY_DEPS_CENTOS="http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os"
+  - PACKETARY_ORIGIN_UBUNTU="https://raw.githubusercontent.com/akostrikov/provides/master/dists mos8.0 main"
+  - PACKETARY_DEPS_UBUNTU="https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main"
 
 before_install:
-  - docker build -t packetary/tester .
+  - pip install -r test-requirements.txt
 
+install:
+  - pip install .
 
-# whitelist
-branches:
-  only:
-    - packetary2
 script:
-  - docker run packetary/tester /bin/bash -c 'cd /tmp && git clone --depth 1 https://github.com/bgaifullin/packetary.git && pip install packetary/; packetary mirror -t yum -u "http://mirror.yandex.ru/centos/6.7/os" -r "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os" -d /tmp/mirror/centos; ls /tmp/mirror/centos'
-  - docker run packetary/tester /bin/bash -c 'cd /tmp && git clone --depth 1 https://github.com/bgaifullin/packetary.git && pip install packetary/; packetary mirror -u "https://raw.githubusercontent.com/akostrikov/provides/master/dists mos8.0 main" -r "https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main" -d /tmp/mirror/ubuntu ; ls /tmp/mirror/ubuntu'
+  - py.test
+  - packetary mirror -t yum -u "$PACKETARY_ORIGIN_CENTOS" -r "$PACKETARY_DEPS_CENTOS" -d centos
+  - packetary mirror -t deb -u "$PACKETARY_ORIGIN_UBUNTU" -r "$PACKETARY_DEPS_UBUNTU" -d ubuntu
