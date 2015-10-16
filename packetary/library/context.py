@@ -16,7 +16,7 @@
 
 from .connections import ConnectionsPool
 from .executor import Executor, ExecutionScope
-from . import repositories
+from .drivers import drivers
 
 
 class Context(object):
@@ -33,9 +33,9 @@ class Context(object):
 
         return ExecutionScope(self.executor, ignore_errors)
 
-    def create_repository(self, kind, arch):
+    def create_driver(self, kind, arch):
         try:
-            return repositories.types[kind](self, arch)
+            return drivers[kind](self, arch)
         except KeyError:
             raise NotImplementedError(
                 "unsupported repository: %s" % kind

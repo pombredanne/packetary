@@ -14,12 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.commands.base import BaseCommand
-from packetary.commands.base import MakeContextMixin
+from packetary.commands.base import BaseRepoCommand
 from packetary.library.index import Index
 
 
-class CreateMirror(MakeContextMixin, BaseCommand):
+class CreateMirror(BaseRepoCommand):
     def get_parser(self, prog_name):
         parser = super(CreateMirror, self).get_parser(prog_name)
         parser.add_argument(
@@ -36,29 +35,28 @@ class CreateMirror(MakeContextMixin, BaseCommand):
         )
         return parser
 
-    def take_action_with_context(self, context, parsed_args):
-        repo = context.create_repository(parsed_args.type, parsed_args.arch)
+    def take_repo_action(self, driver, parsed_args):
         packages = Index()
-        repo.load(parsed_args.url, packages.add)
+        driver.load(parsed_args.url, packages.add)
         if parsed_args.requires:
             requires = Index()
-            repo.load(parsed_args.requires, requires.add)
+            driver.load(parsed_args.requires, requires.add)
             requires = requires.get_unresolved()
             if len(requires) == 0:
                 self.app.stdout.write("Nothing to copy.\n")
                 return
             packages = packages.resolve(requires)
-        repo.clone(packages, parsed_args.destination)
+        driver.clone(packages, parsed_args.destination)
         self.app.stdout.write("Operation completed successfully.\n")
 
 
 if __name__ == "__main__":
     from packetary.app import test
-    # test("mirror", CreateMirror, [
-    #     "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
-    #     "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../../mirror/ubuntu"
-    # ])
     test("mirror", CreateMirror, [
-        "mirror", "-u", "http://mirror.yandex.ru/centos/6.7/os", "-t", "yum", '-v', '-v', '--debug',
-        "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
+        "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+        "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
     ])
+    # test("mirror", CreateMirror, [
+    #     "mirror", "-u", "http://mirror.yandex.ru/centos/6.7/os", "-t", "yum", '-v', '-v', '--debug',
+    #     "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
+    # ])

@@ -15,10 +15,9 @@
 #    under the License.
 
 from packetary.commands.base import BaseProduceOutputCommand
-from packetary.commands.base import MakeContextMixin
 
 
-class ListPackages(MakeContextMixin, BaseProduceOutputCommand):
+class ListPackages(BaseProduceOutputCommand):
     columns = (
         "name",
         "version",
@@ -31,12 +30,11 @@ class ListPackages(MakeContextMixin, BaseProduceOutputCommand):
         "requires",
     )
 
-    def take_action_with_context(self, context, parsed_args):
-        repo = context.create_repository(parsed_args.type, parsed_args.arch)
+    def take_repo_action(self, driver, parsed_args):
         packages = []
         format_package = self.format_object
         append = packages.append
-        repo.load(parsed_args.url, lambda x: append(format_package(x)))
+        driver.load(parsed_args.url, lambda x: append(format_package(x)))
         return packages
 
 

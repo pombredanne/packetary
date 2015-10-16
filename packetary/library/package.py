@@ -75,8 +75,30 @@ class Package(object):
         return hash((self.name, self.version))
 
     def __cmp__(self, other):
-        return cmp((self.name, self.version),
-                   (other.name, other.version))
+        if self.name < other.name:
+            return -1
+        if self.name > other.name:
+            return 1
+        if self.version < other.version:
+            return -1
+        if self.version > other.version:
+            return 1
+        return 0
+
+    def __lt__(self, other):
+        return self.__cmp__(other) < 0
+
+    def __le__(self, other):
+        return self.__cmp__(other) <= 0
+
+    def __gt__(self, other):
+        return self.__cmp__(other) > 0
+
+    def __ge__(self, other):
+        return self.__cmp__(other) >= 0
+
+    def __eq__(self, other):
+        return self.__cmp__(other) == 0
 
 
 _RelationBase = collections.namedtuple(

@@ -14,6 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from .constants import byte_lf
+from .constants import byte_null
+
 
 class Stream(object):
     """Stream object."""
@@ -21,14 +24,14 @@ class Stream(object):
 
     def __init__(self, fileobj):
         self.fileobj = fileobj
-        self.buffer = ''
+        self.buffer = byte_null
 
     def __getattr__(self, item):
         return getattr(self.fileobj, item)
 
     def _read_buffer(self):
         tmp = self.buffer
-        self.buffer = ''
+        self.buffer = byte_null
         return tmp
 
     def _align_chunk(self, chunk, size):
@@ -61,16 +64,16 @@ class Stream(object):
         return result
 
     def readline(self):
-        pos = self.buffer.find('\n')
+        pos = self.buffer.find(byte_lf)
         if pos >= 0:
             line = self._align_chunk(self.buffer, pos + 1)
         else:
             line = self._read_buffer()
             while True:
                 chunk = self._read()
-                if chunk == '':
+                if not chunk:
                     break
-                pos = chunk.find('\n')
+                pos = chunk.find(byte_lf)
                 if pos >= 0:
                     line += self._align_chunk(chunk, pos + 1)
                     break
@@ -80,7 +83,7 @@ class Stream(object):
     def readlines(self):
         while True:
             line = self.readline()
-            if line == '':
+            if not line:
                 break
             yield line
 

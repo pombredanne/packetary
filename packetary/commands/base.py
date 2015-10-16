@@ -21,20 +21,20 @@ import signal
 import six
 
 from packetary.library.context import Context
-from packetary.library.context import repositories
+from packetary.library.context import drivers
 
 
 @six.add_metaclass(abc.ABCMeta)
-class BaseCommand(command.Command):
+class BaseRepoCommand(command.Command):
     def get_parser(self, prog_name):
-        parser = super(BaseCommand, self).get_parser(prog_name)
+        parser = super(BaseRepoCommand, self).get_parser(prog_name)
         parser.add_argument(
             '-t',
             '--type',
             type=str,
-            choices=repositories.types,
+            choices=drivers,
             metavar='DISTRIBUTION',
-            default=sorted(repositories.types)[0],
+            default=sorted(drivers)[0],
             help='The type of distribution.')
 
         parser.add_argument(
@@ -56,12 +56,27 @@ class BaseCommand(command.Command):
 
         return parser
 
-    @abc.abstractmethod
     def take_action(self, parsed_args):
-        """See the Command.take_action."""
+        """See the Command.take_action.
+        :returns: the result of take_repo_action
+        :rtype: object
+        """
+        context = Context(self.app_args.__dict__)
+        signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
+        try:
+            driver = context.create_driver(parsed_args.type, parsed_args.arch)
+            return self.take_repo_action(driver, parsed_args)
+        finally:
+            context.shutdown()
+
+    @abc.abstractmethod
+    def take_repo_action(self, driver, parsed_args):
+        """Takes action on repository.
+        :returns: the action result
+        """
 
 
-class BaseProduceOutputCommand(BaseCommand):
+class BaseProduceOutputCommand(BaseRepoCommand):
     columns = ()
 
     @property
@@ -162,21 +177,5 @@ class BaseProduceOutputCommand(BaseCommand):
         return [self.format_value(getattr(obj, x)) for x in self.columns]
 
     @abc.abstractmethod
-    def take_action(self, parsed_args):
+    def take_repo_action(self, driver, parsed_args):
         """See Command.take_action."""
-
-
-@six.add_metaclass(abc.ABCMeta)
-class MakeContextMixin(object):
-    @abc.abstractmethod
-    def take_action_with_context(self, context, parsed_args):
-        """Takes action within context."""
-
-    def take_action(self, parsed_args):
-        """See Command.take_action."""
-        context = Context(self.app_args.__dict__)
-        signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
-        try:
-            return self.take_action_with_context(context, parsed_args)
-        finally:
-            context.shutdown()
