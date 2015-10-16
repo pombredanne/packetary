@@ -10,7 +10,8 @@ services:
 
 before_install:
   - docker build -t packetary/tester .
-  - docker run /bin/bash -c 'packetary mirror -t yum -u "http://mirror.yandex.ru/centos/6.7/os" -r "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os" -d /tmp/mirror/centos; ls /tmp/mirror/centos'
+  - docker run packetary/tester /bin/bash -c 'packetary mirror -t yum -u "http://mirror.yandex.ru/centos/6.7/os" -r "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os" -d /tmp/mirror/centos; ls /tmp/mirror/centos'
+  - docker run packetary/tester /bin/bash -c 'packetary mirror -u "https://raw.githubusercontent.com/akostrikov/provides/master/dists mos8.0 main" -r "https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main" -d /tmp/mirror/ubuntu'
 
 
 # whitelist
