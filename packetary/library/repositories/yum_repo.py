@@ -96,7 +96,7 @@ class YumRepository(RepositoryWithIndex):
 
     def load_packages(self, baseurl, consumer):
         """Reads packages from metdata."""
-        repomd = baseurl + "/repodata/repomd.xml"
+        repomd = baseurl + "repodata/repomd.xml"
         logger.debug("repomd: %s", repomd)
 
         nodes = None

@@ -7,10 +7,8 @@ python:
   - "3.5"
 
 env:
-  - PACKETARY_ORIGIN_CENTOS="http://mirror.yandex.ru/centos/6.7/os"
-  - PACKETARY_DEPS_CENTOS="http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os"
-  - PACKETARY_ORIGIN_UBUNTU="https://raw.githubusercontent.com/akostrikov/provides/master/dists mos8.0 main"
-  - PACKETARY_DEPS_UBUNTU="https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main"
+  - PACKETARY_TYPE="yum" PACKETARY_ORIGIN="http://mirror.yandex.ru/centos/6.7/os" PACKETARY_DEPS="http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os"
+  - PACKETARY_TYPE="deb" PACKETARY_ORIGIN="https://raw.githubusercontent.com/akostrikov/provides/master/dists mos8.0 main" PACKETARY_DEPS="https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main"
 
 before_install:
   - pip install -r test-requirements.txt
@@ -19,6 +17,5 @@ install:
   - pip install .
 
 script:
-  - py.test
-  - packetary mirror -t yum -u "$PACKETARY_ORIGIN_CENTOS" -r "$PACKETARY_DEPS_CENTOS" -d centos
-  - packetary mirror -t deb -u "$PACKETARY_ORIGIN_UBUNTU" -r "$PACKETARY_DEPS_UBUNTU" -d ubuntu
+  - py.test -v
+  - packetary mirror -t $PACKETARY_TYPE -u "$PACKETARY_ORIGIN" -r "$PACKETARY_DEPS" -d $PACKETARY_TYPE
