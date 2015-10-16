@@ -15,6 +15,7 @@
 #    under the License.
 
 from packetary.commands.base import BaseProduceOutputCommand
+from packetary.commands.utils import get_displayable_object_attrs
 from packetary.library.api import get_unresolved_depends
 
 
@@ -27,10 +28,12 @@ class ListUnresolved(BaseProduceOutputCommand):
 
     def take_repo_action(self, driver, parsed_args):
         return get_unresolved_depends(
-            driver, parsed_args.url, self.format_object
+            driver,
+            parsed_args.origins,
+            lambda x: get_displayable_object_attrs(x, self.columns)
         )
 
 if __name__ == "__main__":
     from packetary.app import test
-    test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
+    test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
     # test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])

@@ -14,33 +14,46 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from packetary.commands.base import BaseRepoCommand
+from packetary.commands.utils import read_lines_from_file
 from packetary.library.api import createmirror
 
 
 class CreateMirror(BaseRepoCommand):
     def get_parser(self, prog_name):
         parser = super(CreateMirror, self).get_parser(prog_name)
-        parser.add_argument(
-            "-r",
-            "--requires",
-            action="append",
-            help="The urls of repositories to resolve requirements."
-        )
+
         parser.add_argument(
             "-d",
             "--destination",
             required=True,
             help="The destination folder."
         )
+        requires_gr = parser.add_mutually_exclusive_group(required=False)
+        requires_gr.add_argument(
+            '-r', '--requires-url',
+            nargs="+",
+            dest='requires',
+            type=six.text_type,
+            metavar='URL',
+            help='Space separated list of urls for origin repositories.')
+
+        requires_gr.add_argument(
+            '-R', '--requires-file',
+            type=read_lines_from_file,
+            dest='requires',
+            metavar='FILENAME',
+            help='The path to file with urls for origin repositories.')
         return parser
 
     def take_repo_action(self, driver, parsed_args):
         packages_count = createmirror(
             driver,
             parsed_args.destination,
-            parsed_args.url,
-            parsed_args.requires or None
+            parsed_args.origins,
+            parsed_args.requires
         )
         self.app.stdout.write("Packages copied: %d.\n" % packages_count)
 
@@ -52,6 +65,6 @@ if __name__ == "__main__":
     #     "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
     # ])
     test("mirror", CreateMirror, [
-        "mirror", "-u", "http://mirror.yandex.ru/centos/6.7/os", "-t", "yum", '-v', '-v', '--debug',
+        "mirror", "-O", "../../mirror/centos.txt", "-t", "yum", '-v', '-v', '--debug',
         "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
     ])

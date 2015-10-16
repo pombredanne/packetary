@@ -15,6 +15,7 @@
 #    under the License.
 
 from packetary.commands.base import BaseProduceOutputCommand
+from packetary.commands.utils import get_displayable_object_attrs
 from packetary.library.api import get_packages
 
 
@@ -32,11 +33,15 @@ class ListPackages(BaseProduceOutputCommand):
     )
 
     def take_repo_action(self, driver, parsed_args):
-        return get_packages(driver, parsed_args.url, self.format_object)
+        return get_packages(
+            driver,
+            parsed_args.origins,
+            lambda x: get_displayable_object_attrs(x, self.columns)
+        )
 
 
 if __name__ == "__main__":
     from packetary.app import test
     #test("list", ListPackages, ["list", "-u", "http://mirror.yandex.ru/centos/7.1.1503/os", "-t", "yum", '-v', '-v', '--debug'])
-    test("list", ListPackages, ["list", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+    test("list", ListPackages, ["list", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
                                 '--column', 'name', 'size', 'filename', '--sort-column', 'name', 'version'])

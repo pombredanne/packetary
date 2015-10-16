@@ -90,8 +90,8 @@ class Index(object):
     def __iter__(self):
         return self.get_packages()
 
-    def __len__(self):
-        return reduce(
+    def __len__(self, _reduce=six.functools.reduce):
+        return _reduce(
             lambda x, y: x + len(y),
             six.itervalues(self.packages),
             0

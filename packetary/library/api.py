@@ -46,9 +46,12 @@ def get_packages(driver, url, formatter=None):
     :param formatter: the output formatter
     """
     packages = []
-    consumer = packages.append
+    append = packages.append
     if formatter is not None:
-        consumer = lambda x: consumer(formatter(x))
+        consumer = lambda x: append(formatter(x))
+    else:
+        consumer = append
+
     driver.load(url, consumer)
     return packages
 

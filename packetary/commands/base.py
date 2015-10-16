@@ -22,6 +22,7 @@ import six
 
 from packetary.library.context import Context
 from packetary.library.context import drivers
+from packetary.commands.utils import read_lines_from_file
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -46,13 +47,21 @@ class BaseRepoCommand(command.Command):
             default="x86_64",
             help='The target architecture.')
 
-        parser.add_argument(
-            '-u',
-            '--url',
-            type=str,
+        origin_gr = parser.add_mutually_exclusive_group(required=True)
+        origin_gr.add_argument(
+            '-o', '--origin-url',
+            nargs="+",
+            dest='origins',
+            type=six.text_type,
             metavar='URL',
-            required=True,
-            help='The repository URL.')
+            help='Space separated list of urls for origin repositories.')
+
+        origin_gr.add_argument(
+            '-O', '--origin-file',
+            type=read_lines_from_file,
+            dest='origins',
+            metavar='FILENAME',
+            help='The path to file with urls for origin repositories.')
 
         return parser
 
@@ -104,8 +113,7 @@ class BaseProduceOutputCommand(BaseRepoCommand):
             metavar='SORT_COLUMN',
             default=[self.columns[0]],
             help='Space separated list of keys for sorting '
-                 'the data. Defaults to id. Wrong values '
-                 'are ignored.'
+                 'the data.'
         )
         group.add_argument(
             '--sep',
@@ -156,17 +164,6 @@ class BaseProduceOutputCommand(BaseRepoCommand):
         data = self.take_action(parsed_args)
         self.produce_output(parsed_args, data)
         return 0
-
-    @staticmethod
-    def format_value(val):
-        if not val:
-            return six.text_type("-")
-        if isinstance(val, list):
-            return six.text_type(", ").join(six.text_type(x) for x in val)
-        return six.text_type(val)
-
-    def format_object(self, obj):
-        return [self.format_value(getattr(obj, x)) for x in self.columns]
 
     @abc.abstractmethod
     def take_repo_action(self, driver, parsed_args):
