@@ -24,8 +24,6 @@ import six
 class Package(object):
     """Structure to describe package object."""
 
-    __hash = None
-
     @property
     @abc.abstractmethod
     def name(self):
@@ -74,9 +72,7 @@ class Package(object):
         """The list of packages(name, version), that replaces by package."""
 
     def __hash__(self):
-        if self.__hash is None:
-            self.__hash = hash((self.name, self.version))
-        return self.__hash
+        return hash((self.name, self.version))
 
     def __cmp__(self, other):
         return cmp((self.name, self.version),

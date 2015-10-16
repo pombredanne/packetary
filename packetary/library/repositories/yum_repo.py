@@ -64,22 +64,19 @@ class YumIndexWriter(IndexWriter):
                 "Please install createrepo utility and run the following "
                 "commands manually:"
             )
-
-        with self.context.get_execution_scope(0) as scope:
-            for repo in self.repos:
-                self._createrepo(scope, repo)
-
-    def _createrepo(self, scope, repo):
-        path = os.path.join(self.destination, *repo)
-        if os.path.exists(os.path.join(path, "repodata", "repomd.xml")):
-            cmd = [createrepo, path, "--update"]
+            command = lambda x: six.print_("\t", subprocess.list2cmdline(x))
+            executable = "createrepo"
         else:
-            cmd = [createrepo, path]
-        if createrepo is not None:
-            scope.execute(subprocess.check_call, cmd)
-        else:
-            cmd[0] = "createrepo"
-            six.print_(">>", subprocess.list2cmdline(cmd))
+            command = subprocess.check_call
+            executable = createrepo
+
+        for repo in self.repos:
+            path = os.path.join(self.destination, *repo)
+            if os.path.exists(os.path.join(path, "repodata", "repomd.xml")):
+                cmd = [executable, path, "--update"]
+            else:
+                cmd = [executable, path]
+            command(cmd)
 
 
 class YumRepository(RepositoryWithIndex):

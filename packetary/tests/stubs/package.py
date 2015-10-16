@@ -15,11 +15,13 @@
 #    under the License.
 
 from packetary.library import package
-import functools
+
 
 VersionRange = package.VersionRange
 
+
 Relation = package.Relation
+
 
 class Package(package.Package):
     def __init__(self, **kwargs):
@@ -37,12 +39,38 @@ class Package(package.Package):
     def _get_property(self, name=None):
         return self.props[name]
 
-    name = lambda self: self._get_property("name")
-    version = lambda self: self._get_property("version")
-    arch = lambda self: self._get_property("arch")
-    size = lambda self: self._get_property("size")
-    checksum = lambda self: self._get_property("checksum")
-    url = lambda self: self._get_property("url")
-    requires = lambda self: self._get_property("requires")
-    provides = lambda self: self._get_property("provides")
-    obsoletes = lambda self: self._get_property("obsoletes")
+    @property
+    def name(self):
+        return self._get_property('name')
+
+    @property
+    def version(self):
+        return self._get_property('version')
+
+    @property
+    def size(self):
+        return self._get_property('size')
+
+    @property
+    def filename(self):
+        return self._get_property('filename')
+
+    @property
+    def url(self):
+        return self._get_property('url')
+
+    @property
+    def checksum(self):
+        return self._get_property('checksum')
+
+    @property
+    def requires(self):
+        return self._get_property('requires')
+
+    @property
+    def provides(self):
+        return self._get_property('provides')
+
+    @property
+    def obsoletes(self):
+        return self._get_property('obsoletes')
