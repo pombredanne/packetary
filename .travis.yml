@@ -23,6 +23,6 @@ install:
 
 script:
   - py.test -v
-  - packetary list -t $PACKETARY_TYPE -o "PACKETARY_DEPS" > /dev/null
-  - packetary unresolved -t $PACKETARY_TYPE -o "PACKETARY_DEPS" > /dev/null
+  - packetary list -t $PACKETARY_TYPE -o "$PACKETARY_DEPS" > /dev/null
+  - packetary unresolved -t $PACKETARY_TYPE -o "$PACKETARY_DEPS" > /dev/null
   - packetary mirror -t $PACKETARY_TYPE -o "$PACKETARY_ORIGIN" -r "$PACKETARY_DEPS" -d $PACKETARY_TYPE
