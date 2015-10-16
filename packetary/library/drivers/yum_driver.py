@@ -18,7 +18,7 @@ import six
 import six.moves.urllib.parse as urlparse
 import subprocess
 
-from packetary.library.gzip_stream import GzipDecompress
+from packetary.library.streams import GzipDecompress
 
 from .base import IndexWriter
 from .base import logger

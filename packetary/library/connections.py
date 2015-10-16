@@ -20,7 +20,7 @@ import six
 import six.moves.urllib.request as urllib_request
 import six.moves.urllib_error as urllib_error
 
-from packetary.library import stream
+from packetary.library.streams import BufferedStream
 
 
 logger = logging.getLogger(__package__)
@@ -35,7 +35,7 @@ class RetryableRequest(urllib_request.Request):
     retries = 1
 
 
-class RetryableResponse(stream.Stream):
+class RetryableResponse(BufferedStream):
     def __init__(self, request, response, opener):
         super(RetryableResponse, self).__init__(response)
         self.request = request

@@ -24,14 +24,13 @@ def _checksum(method):
     with selected method.
     """
 
-    def calc(f):
+    def calc(stream, chunksize=16 * 1024):
         s = method()
-        with open(f, "rb") as stream:
-            while True:
-                chunk = stream.read(1024)
-                if not chunk:
-                    break
-                s.update(chunk)
+        while True:
+            chunk = stream.read(chunksize)
+            if not chunk:
+                break
+            s.update(chunk)
         return s.hexdigits()
     return calc
 

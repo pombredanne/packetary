@@ -14,11 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import zlib
+
 from .constants import byte_lf
 from .constants import byte_null
 
 
-class Stream(object):
+class BufferedStream(object):
     """Stream object."""
     chunk_size = 1024
 
@@ -89,3 +91,20 @@ class Stream(object):
 
     def __iter__(self):
         return self.readlines()
+
+
+class GzipDecompress(BufferedStream):
+    """The decompress stream."""
+
+    def __init__(self, fileobj):
+        super(GzipDecompress, self).__init__(fileobj)
+        # Magic parameter makes zlib module understand gzip header
+        # http://stackoverflow.com/questions/1838699/how-can-i-decompress-a-gzip-stream-with-zlib
+        # This works on cpython and pypy, but not jython.
+        self.decompress = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
+    def _read(self):
+        chunk = self.fileobj.read(self.chunk_size)
+        if not chunk:
+            return self.decompress.flush()
+        return self.decompress.decompress(chunk)

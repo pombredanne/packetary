@@ -23,7 +23,7 @@ import os
 import six
 
 from packetary.library.constants import byte_lf
-from packetary.library.gzip_stream import GzipDecompress
+from packetary.library.streams import GzipDecompress
 
 from .base import IndexWriter
 from .base import logger

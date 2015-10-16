@@ -61,7 +61,7 @@ class CreateMirror(BaseRepoCommand):
 if __name__ == "__main__":
     from packetary.app import test
     # test("mirror", CreateMirror, [
-    #     "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+    #     "mirror", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
     #     "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
     # ])
     test("mirror", CreateMirror, [
