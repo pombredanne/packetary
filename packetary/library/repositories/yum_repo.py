@@ -12,11 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from collections import defaultdict
 import lxml.etree as etree
 import os
 import six
 import six.moves.urllib.parse as urlparse
+import subprocess
 
 from packetary.library.packages import YumPackage
 from packetary.library.gzip_stream import GzipDecompress
@@ -32,21 +32,54 @@ _namespaces = {
 }
 
 
+def _find_createrepo():
+    """Finds the createrepo executable"""
+    paths = os.environ['PATH'].split(os.pathsep)
+    createrepo = os.environ.get("CREATEREPO_PATH", "createrepo")
+    if not os.path.isfile(createrepo):
+        for p in paths:
+            f = os.path.join(p, createrepo)
+            if os.path.isfile(f):
+                return f
+        return None
+    else:
+        return createrepo
+
+
+createrepo = _find_createrepo()
+
+
 class YumIndexWriter(IndexWriter):
-    def __init__(self, repo, destination):
-        self.repo = repo
+    def __init__(self, context, destination):
+        self.context = context
         self.destination = destination
-        self.index = defaultdict(list)
+        self.repos = set()
 
     def add(self, p):
-        self.index[p.repo].append(p)
+        self.repos.add(p.repo)
 
     def flush(self):
-        for k in six.iterkeys(self.index):
-            cmd = "createmirror --target {0}".format(
-                os.path.join(self.destination, *k)
+        if createrepo is None:
+            six.print_(
+                "Please install createrepo utility and run the following "
+                "commands manually:"
             )
-            print cmd
+
+        with self.context.get_execution_scope(0) as scope:
+            for repo in self.repos:
+                self._createrepo(scope, repo)
+
+    def _createrepo(self, scope, repo):
+        path = os.path.join(self.destination, *repo)
+        if os.path.exists(os.path.join(path, "repodata", "repomd.xml")):
+            cmd = [createrepo, path, "--update"]
+        else:
+            cmd = [createrepo, path]
+        if createrepo is not None:
+            scope.execute(subprocess.check_call, cmd)
+        else:
+            cmd[0] = "createrepo"
+            six.print_(">>", subprocess.list2cmdline(cmd))
 
 
 class YumRepository(RepositoryWithIndex):
@@ -56,7 +89,7 @@ class YumRepository(RepositoryWithIndex):
         return list(p.repo) + p.filename.split("/")
 
     def create_index_writer(self, destination):
-        return YumIndexWriter(self, destination)
+        return YumIndexWriter(self.context, destination)
 
     def parse_urls(self, urls):
         for url in urls:
