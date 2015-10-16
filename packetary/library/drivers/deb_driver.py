@@ -16,6 +16,7 @@ from __future__ import with_statement
 
 from bintrees import FastRBTree
 from collections import defaultdict
+from contextlib import closing
 from debian import deb822
 import gzip
 import os
@@ -64,7 +65,7 @@ class DebIndexWriter(IndexWriter):
         tmp = os.path.join(path, "Packages.tmp.gz")
         if os.path.exists(index_file):
             logger.info("update existing index: %s", index_file)
-            with gzip.open(index_file, "rb") as stream:
+            with closing(gzip.open(index_file, "rb")) as stream:
                 pkg_iter = deb822.Packages.iter_paragraphs(stream)
                 for dpkg in pkg_iter:
                     packages.insert(
@@ -73,7 +74,7 @@ class DebIndexWriter(IndexWriter):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        with gzip.open(tmp, "wb") as index:
+        with closing(gzip.open(tmp, "wb")) as index:
             for p in packages.keys():
                 p.dpkg.dump(fd=index)
                 index.write(byte_lf)
