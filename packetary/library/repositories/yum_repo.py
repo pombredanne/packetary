@@ -12,13 +12,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from collections import defaultdict
 from collections import namedtuple
 import lxml.etree as etree
+import os
 import six
 
 from packetary.library import package
 from packetary.library.gzip_stream import GzipDecompress
 
+from .base import IndexWriter
 from .base import logger
 from .base import RepositoryWithIndex
 
@@ -142,19 +145,43 @@ class YumPackage(package.Package):
         return relations
 
 
+class YumIndexWriter(IndexWriter):
+    def __init__(self, repo, destination):
+        self.repo = repo
+        self.destination = destination
+        self.index = defaultdict(list)
+
+    def add(self, p):
+        self.index[tuple(p.base_url.rsplit("/", 2)[1:])].append(p)
+
+    def flush(self):
+        for k in six.iterkeys(self.index):
+            cmd = "createmirror --target {0}".format(
+                os.path.join(self.destination, *k)
+            )
+            print cmd
+
+
 class YumRepository(RepositoryWithIndex):
+    """Yum repositories implementation"""
+
+    def get_package_path(self, p):
+        comps = p.base_url.rsplit("/", 2)[1:]
+        comps.extend(p.filename.split("/"))
+        return comps
+
     def create_index_writer(self, destination):
-        raise NotImplementedError
+        return YumIndexWriter(self, destination)
 
     def parse_urls(self, urls):
         for url in urls:
             if url.endswith("/"):
                 url = url[:-1]
-            yield "/".join((url, self.arch, ""))
+            yield "/".join((url, self.arch))
 
     def load_packages(self, baseurl, consumer):
         """Reads packages from metdata."""
-        repomd = baseurl + "repodata/repomd.xml"
+        repomd = baseurl + "/repodata/repomd.xml"
         logger.debug("repomd: %s", repomd)
         with self.context.connections.acquire() as connection:
             repomd_tree = etree.parse(connection.open_stream(repomd))
@@ -184,7 +211,7 @@ class YumRepository(RepositoryWithIndex):
                 scope.execute(
                     self._read_meta,
                     self.context.connections,
-                    baseurl + location, dictionary, ns, get_id
+                    "/".join((baseurl, location)), dictionary, ns, get_id
                 )
 
         for pkgid, pkg in six.iteritems(primary):

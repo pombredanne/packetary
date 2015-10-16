@@ -116,8 +116,11 @@ class Connection(object):
     @staticmethod
     def _ensure_dir_exists(dst):
         target_dir = os.path.dirname(dst)
-        if not os.path.exists(target_dir):
+        try:
             os.makedirs(target_dir)
+        except OSError as e:
+            if e.errno != 17:
+                raise
 
     def _copy_stream(self, fd, url, offset):
         os.ftruncate(fd, offset)

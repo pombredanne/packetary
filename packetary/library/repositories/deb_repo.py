@@ -23,6 +23,7 @@ import six
 from packetary.library import package
 from packetary.library.gzip_stream import GzipDecompress
 
+from .base import IndexWriter
 from .base import logger
 from .base import RepositoryWithIndex
 
@@ -125,13 +126,13 @@ class DebPackage(package.Package):
         return relations
 
 
-class DebIndexWriter(object):
+class DebIndexWriter(IndexWriter):
     def __init__(self, context, destination):
         self.context = context
         self.destination = destination
         self.index = defaultdict(FastRBTree)
 
-    def write(self, p):
+    def add(self, p):
         self.index[p.repo][p] = None
 
     def flush(self):
@@ -175,6 +176,9 @@ class DebRepository(RepositoryWithIndex):
         super(DebRepository, self).__init__(
             context, 'binary-' + _ARCH_MAPPING[arch]
         )
+
+    def get_package_path(self, p):
+        return p.filename.split("/")
 
     def create_index_writer(self, destination):
         return DebIndexWriter(self.context, destination)

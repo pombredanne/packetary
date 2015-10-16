@@ -17,11 +17,23 @@
 import abc
 import logging
 import os
+import six
 
 from packetary.library import repository
 
 
 logger = logging.getLogger(__package__)
+
+
+@six.add_metaclass(abc.ABCMeta)
+class IndexWriter(object):
+    @abc.abstractmethod
+    def add(self, package):
+        """Adds package to index."""
+
+    @abc.abstractmethod
+    def flush(self):
+        """Persistent changes on disk."""
 
 
 class RepositoryWithIndex(repository.Repository):
@@ -35,7 +47,14 @@ class RepositoryWithIndex(repository.Repository):
 
     @abc.abstractmethod
     def load_packages(self, url, consumer):
-        """Load packages by url."""
+        """Loads packages by url."""
+
+    @abc.abstractmethod
+    def get_package_path(self, package):
+        """Gets the destination for package.
+        :return: list of path components
+        :rtype: list
+        """
 
     def parse_urls(self, urls):
         """Iterates over urls.
@@ -59,7 +78,7 @@ class RepositoryWithIndex(repository.Repository):
         """See the Repository.rebuild_index."""
         index_writer = self.create_index_writer(destination)
         for package in provider:
-            index_writer.write(package)
+            index_writer.add(package)
         index_writer.flush()
 
     def clone(self, provider, destination):
@@ -68,14 +87,14 @@ class RepositoryWithIndex(repository.Repository):
         with self.context.get_execution_scope() as scope:
             for package in provider:
                 scope.execute(self._replicate_package, package, destination)
-                index_writer.write(package)
+                index_writer.add(package)
         index_writer.flush()
 
     def _replicate_package(self, package, destination):
         """Synchronises remote file to local fs."""
         connections = self.context.connections
         offset = 0
-        dst_path = os.path.join(destination, package.filename)
+        dst_path = os.path.join(destination, *self.get_package_path(package))
         try:
             stats = os.stat(dst_path)
             if stats.st_size == package.size:

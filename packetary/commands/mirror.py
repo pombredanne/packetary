@@ -54,8 +54,11 @@ class CreateMirror(MakeContextMixin, BaseCommand):
 
 if __name__ == "__main__":
     from packetary.app import test
-    # test("mirror", ListPackages, ["list", "-u", "http://mirror.yandex.ru/centos/7.1.1503/os", "-t", "yum", '-v', '-v', '--debug'])
+    # test("mirror", CreateMirror, [
+    #     "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+    #     "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../../mirror/ubuntu"
+    # ])
     test("mirror", CreateMirror, [
-        "mirror", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
-        "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../../mirror/ubuntu"
+        "mirror", "-u", "http://mirror.yandex.ru/centos/6.7/os", "-t", "yum", '-v', '-v', '--debug',
+        "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
     ])
