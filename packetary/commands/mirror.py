@@ -60,11 +60,11 @@ class CreateMirror(BaseRepoCommand):
 
 if __name__ == "__main__":
     from packetary.app import test
-    # test("mirror", CreateMirror, [
-    #     "mirror", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
-    #     "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
-    # ])
     test("mirror", CreateMirror, [
-        "mirror", "-O", "../../mirror/centos.txt", "-t", "yum", '-v', '-v', '--debug',
-        "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
+        "mirror", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
+        "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
     ])
+    # test("mirror", CreateMirror, [
+    #     "mirror", "-O", "../../mirror/centos.txt", "-t", "yum", '-v', '-v', '--debug',
+    #     "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
+    # ])

@@ -20,9 +20,9 @@ from cliff import command
 import signal
 import six
 
-from packetary.library.context import Context
-from packetary.library.context import drivers
 from packetary.commands.utils import read_lines_from_file
+from packetary.library.api import create_repo_driver
+from packetary.library.context import Context
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -33,9 +33,9 @@ class BaseRepoCommand(command.Command):
             '-t',
             '--type',
             type=str,
-            choices=drivers,
+            choices=['deb', 'yum'],
             metavar='DISTRIBUTION',
-            default=sorted(drivers)[0],
+            default='deb',
             help='The type of distribution.')
 
         parser.add_argument(
@@ -73,7 +73,10 @@ class BaseRepoCommand(command.Command):
         context = Context(self.app_args.__dict__)
         signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
         try:
-            driver = context.create_driver(parsed_args.type, parsed_args.arch)
+            driver = create_repo_driver(
+                context, parsed_args.type, parsed_args.arch
+            )
+
             return self.take_repo_action(driver, parsed_args)
         finally:
             context.shutdown()

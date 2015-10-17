@@ -35,15 +35,15 @@ _namespaces = {
 def _find_createrepo():
     """Finds the createrepo executable"""
     paths = os.environ['PATH'].split(os.pathsep)
-    createrepo = os.environ.get("CREATEREPO_PATH", "createrepo")
-    if not os.path.isfile(createrepo):
+    executable = os.environ.get("CREATEREPO_PATH", "createrepo")
+    if not os.path.isfile(executable):
         for p in paths:
-            f = os.path.join(p, createrepo)
+            f = os.path.join(p, executable)
             if os.path.isfile(f):
                 return f
         return None
     else:
-        return createrepo
+        return executable
 
 
 createrepo = _find_createrepo()
@@ -82,8 +82,8 @@ class YumIndexWriter(IndexWriter):
 class YumRepoDriver(BaseRepoDriver):
     """Yum repositories implementation"""
 
-    def get_package_path(self, p):
-        return list(p.repo) + p.filename.split("/")
+    def get_package_dir(self, package):
+        return package.repo
 
     def create_index_writer(self, destination):
         return YumIndexWriter(self.context, destination)

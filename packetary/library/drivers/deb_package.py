@@ -75,7 +75,7 @@ class DebPackage(Package):
 
     @property
     def url(self):
-        return self.baseurl + "/../" + self.dpkg["Filename"]
+        return self.baseurl + self.dpkg["Filename"]
 
     @property
     def requires(self):

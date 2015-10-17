@@ -90,8 +90,8 @@ class DebRepoDriver(BaseRepoDriver):
             context, 'binary-' + _ARCH_MAPPING[arch]
         )
 
-    def get_package_path(self, p):
-        return p.filename.split("/")
+    def get_package_dir(self, package):
+        return []
 
     def create_index_writer(self, destination):
         return DebIndexWriter(self.context, destination)
@@ -107,7 +107,11 @@ class DebRepoDriver(BaseRepoDriver):
                     .format(url)
                 )
 
-            if baseurl.endswith("/"):
+            if baseurl.endswith("dists/"):
+                baseurl = baseurl[:-1]
+            elif baseurl.endswith("dists"):
+                baseurl = baseurl[:-5]
+            elif baseurl.endswith("/"):
                 baseurl = baseurl[:-1]
 
             for comp in comps.split(":"):
@@ -117,7 +121,7 @@ class DebRepoDriver(BaseRepoDriver):
         """Loads from Packages.gz."""
         baseurl, repo = url
 
-        index_file = "{0}/{1}/{2}/{3}/Packages.gz".format(baseurl, *repo)
+        index_file = "{0}/dists/{1}/{2}/{3}/Packages.gz".format(baseurl, *repo)
         logger.info("loading packages from: %s", index_file)
         with self.context.connections.acquire() as connection:
             stream = GzipDecompress(connection.open_stream(index_file))

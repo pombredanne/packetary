@@ -14,7 +14,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from .drivers import drivers
 from .index import Index
+
+
+def create_repo_driver(context, kind, arch):
+    """Creates the repository driver"""
+    try:
+        return drivers[kind](context, arch)
+    except KeyError:
+        raise NotImplementedError(
+            "unsupported repository: %s" % kind
+        )
 
 
 def createmirror(driver, destination, origin, debs=None):

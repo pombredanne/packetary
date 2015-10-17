@@ -50,9 +50,9 @@ class BaseRepoDriver(driver.RepoDriver):
         """Loads packages by url."""
 
     @abc.abstractmethod
-    def get_package_path(self, package):
-        """Gets the destination for package.
-        :return: list of path components
+    def get_package_dir(self, package):
+        """Gets the folder where will be copied package.
+        :returns: the path components
         :rtype: list
         """
 
@@ -74,7 +74,6 @@ class BaseRepoDriver(driver.RepoDriver):
 
     def clone(self, producer, destination):
         index_writer = self.create_index_writer(destination)
-
         with self.context.get_execution_scope() as scope:
             for package in producer:
                 scope.execute(self._replicate_package, package, destination)
@@ -85,7 +84,8 @@ class BaseRepoDriver(driver.RepoDriver):
         """Synchronises remote file to local fs."""
         connections = self.context.connections
         offset = 0
-        dst_path = os.path.join(destination, *self.get_package_path(package))
+        dst_path = os.path.join(destination, *self.get_package_dir(package))
+        dst_path = os.path.join(dst_path, *package.filename.split("/"))
         try:
             stats = os.stat(dst_path)
             if stats.st_size == package.size:

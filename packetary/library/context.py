@@ -16,7 +16,6 @@
 
 from .connections import ConnectionsPool
 from .executor import Executor, ExecutionScope
-from .drivers import drivers
 
 
 class Context(object):
@@ -32,14 +31,6 @@ class Context(object):
             ignore_errors = self.ignore_errors
 
         return ExecutionScope(self.executor, ignore_errors)
-
-    def create_driver(self, kind, arch):
-        try:
-            return drivers[kind](self, arch)
-        except KeyError:
-            raise NotImplementedError(
-                "unsupported repository: %s" % kind
-            )
 
     def shutdown(self, wait=True):
         """Stops the execution."""
