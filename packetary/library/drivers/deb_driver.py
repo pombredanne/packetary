@@ -108,7 +108,7 @@ class DebRepoDriver(BaseRepoDriver):
                 )
 
             if baseurl.endswith("/dists/"):
-                baseurl = baseurl[:-1]
+                baseurl = baseurl[:-6]
             elif baseurl.endswith("/dists"):
                 baseurl = baseurl[:-5]
             elif baseurl.endswith("/"):

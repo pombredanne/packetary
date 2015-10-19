@@ -86,7 +86,7 @@ class Executor(object):
     def _worker(self):
         while True:
             try:
-                task = self.tasks.get(10)
+                task = self.tasks.get()
                 if task is Executor._stopper:
                     break
 

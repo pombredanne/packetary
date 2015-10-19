@@ -36,4 +36,4 @@ class ListUnresolved(BaseProduceOutputCommand):
 if __name__ == "__main__":
     from packetary.cli.app import test
     # test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
-    test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])
+    test("unresolved", ListUnresolved, ["unresolved", "-o", "https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main", "-t", "deb", '-v', '-v', '--debug'])
