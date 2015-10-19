@@ -20,6 +20,7 @@ from cliff.commandmanager import CommandManager
 
 class Application(app.App):
     """Main cliff application class.
+
     Performs initialization of the command manager and
     configuration of basic engines.
     """

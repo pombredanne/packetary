@@ -44,5 +44,6 @@ def get_display_value(v):
 
 def make_display_attr_getter(fields):
     """Gets object attributes in displayable format."""
-    return lambda x: [get_display_value(v) for v in get_object_attrs(x, fields)]
-
+    return lambda x: [
+        get_display_value(v) for v in get_object_attrs(x, fields)
+    ]

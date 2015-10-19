@@ -92,6 +92,9 @@ class Connection(object):
         self.retries = retries
 
     def get_request(self, url, offset=0):
+        if url.startswith("/"):
+            url = "file://" + url
+
         request = RetryableRequest(url)
         request.retries = self.retries
         request.offset = offset
@@ -141,7 +144,9 @@ class Connection(object):
         except RangeError:
             if offset == 0:
                 raise
-            logger.warning("Failed to resume download, starts from begin: %s", url)
+            logger.warning(
+                "Failed to resume download, starts from begin: %s", url
+            )
             self._copy_stream(fd, url, 0)
         finally:
             os.fsync(fd)

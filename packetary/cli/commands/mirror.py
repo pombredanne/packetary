@@ -31,6 +31,12 @@ class CreateMirror(BaseRepoCommand):
             required=True,
             help="The destination folder."
         )
+        parser.add_argument(
+            "--keep-existing",
+            action='store_true',
+            default=False,
+            help="Do not remove packages that does not exist in origin repo."
+        )
         requires_gr = parser.add_mutually_exclusive_group(required=False)
         requires_gr.add_argument(
             '-r', '--requires-url',
@@ -48,23 +54,27 @@ class CreateMirror(BaseRepoCommand):
             help='The path to file with urls for origin repositories.')
         return parser
 
-    def take_repo_action(self, driver, parsed_args):
+    def take_repo_action(self, context, parsed_args):
+        """Overrides base class method."""
         packages_count = createmirror(
-            driver,
+            context,
+            parsed_args.type,
+            parsed_args.arch,
             parsed_args.destination,
             parsed_args.origins,
-            parsed_args.requires
+            parsed_args.requires,
+            parsed_args.keep_existing
         )
         self.app.stdout.write("Packages copied: %d.\n" % packages_count)
 
 
 if __name__ == "__main__":
+    import sys
+
     from packetary.cli.app import test
-    test("mirror", CreateMirror, [
-        "mirror", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
-        "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
-    ])
-    # test("mirror", CreateMirror, [
-    #     "mirror", "-O", "../../mirror/centos.txt", "-t", "yum", '-v', '-v', '--debug',
-    #     "-r", "http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os", "-d", "../../mirror/centos"
-    # ])
+
+    test(
+        "mirror",
+        CreateMirror,
+        ["mirror"] + sys.argv + ["-v", "-v", "--debug"]
+    )

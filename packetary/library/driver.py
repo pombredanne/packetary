@@ -20,13 +20,37 @@ import six
 
 
 @six.add_metaclass(abc.ABCMeta)
+class IndexWriter(object):
+    """Helpers to generate index of repository."""
+
+    @abc.abstractmethod
+    def add(self, package):
+        """Adds package to index."""
+
+    @abc.abstractmethod
+    def flush(self, keep_existing=False):
+        """Persistent changes on disk."""
+
+
+@six.add_metaclass(abc.ABCMeta)
 class RepoDriver(object):
-    """Abstraction to manage repositories."""
+    """The driver to access the repository."""
 
     @abc.abstractmethod
-    def load(self, url, consumer):
-        """Load the packages from url."""
+    def create_index(self, destination):
+        """Creates the index writer."""
 
     @abc.abstractmethod
-    def clone(self, producer, destination):
-        """Saves the repository the specified path."""
+    def load(self, baseurl, reponame, consumer):
+        """Loads packages from url."""
+
+    @abc.abstractmethod
+    def get_path(self, base, package):
+        """Gets the package full path."""
+
+    @abc.abstractmethod
+    def parse_urls(self, urls):
+        """Parses urls.
+
+        :return: The sequence of url.
+        """

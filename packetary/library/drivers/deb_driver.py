@@ -19,58 +19,59 @@ from collections import defaultdict
 from contextlib import closing
 from debian import deb822
 import gzip
+import logging
 import os
 import six
 
 from packetary.library.constants import byte_lf
+from packetary.library.driver import IndexWriter
+from packetary.library.driver import RepoDriver
+from packetary.library.drivers.deb_package import DebPackage
 from packetary.library.streams import GzipDecompress
 
-from .base import IndexWriter
-from .base import logger
-from .base import BaseRepoDriver
-from .deb_package import DebPackage
+
+logger = logging.getLogger(__package__)
 
 
 _ARCH_MAPPING = {
-    'amd64': 'x86_64',
-    'i386': 'i386',
-    'all': '*',
-    'x86_64': 'amd64',
+    'i386': 'binary-i386',
+    'x86_64': 'binary-amd64',
 }
 
 
 class DebIndexWriter(IndexWriter):
-    def __init__(self, context, destination):
-        self.context = context
-        self.destination = destination
+    def __init__(self, driver, destination):
+        self.driver = driver
+        self.destination = os.path.abspath(destination)
         self.index = defaultdict(FastRBTree)
 
     def add(self, p):
-        self.index[p.repo][p] = None
+        self.index[p.reponame][p] = None
 
-    def flush(self):
-        with self.context.get_execution_scope(0) as scope:
-            for repo, packages in six.iteritems(self.index):
-                scope.execute(
-                    self._update_index,
-                    self.destination, repo, packages
-                )
+    def flush(self, keep_existing=True):
+        for repo, packages in six.iteritems(self.index):
+            self._rebuild_index(repo, packages, keep_existing)
 
-    @staticmethod
-    def _update_index(destination, repo, packages):
+    def _rebuild_index(self, reponame, packages, keep_existing):
         """Saves the index file in local file system."""
-        path = os.path.join(destination, "dists", *repo)
+        path = os.path.join(
+            self.destination, "dists", reponame, self.driver.arch
+        )
         index_file = os.path.join(path, "Packages.gz")
         logger.info("the index file: %s.", index_file)
         tmp = os.path.join(path, "Packages.tmp.gz")
+        dirty_files = set()
+        if keep_existing:
+            on_existing_package = lambda x: packages.insert(p, None)
+            handler = lambda x: None
+        else:
+            on_existing_package = lambda x: dirty_files.add(x.filename)
+            handler = lambda x: dirty_files.discard(x.filename)
+
         if os.path.exists(index_file):
-            logger.info("update existing index: %s", index_file)
-            with closing(gzip.open(index_file, "rb")) as stream:
-                pkg_iter = deb822.Packages.iter_paragraphs(stream)
-                for dpkg in pkg_iter:
-                    packages.insert(
-                        DebPackage(dpkg, destination, repo), None
-                    )
+            logger.info("process existing index: %s", index_file)
+            self.driver.load(self.destination, reponame, on_existing_package)
+
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -78,25 +79,27 @@ class DebIndexWriter(IndexWriter):
             for p in packages.keys():
                 p.dpkg.dump(fd=index)
                 index.write(byte_lf)
+                handler(p)
+
         os.rename(tmp, index_file)
+        for f in dirty_files:
+            os.remove(os.path.join(self.destination, f))
+            logger.info("File %s was removed.", f)
+
         logger.info(
             "the index %s has been updated successfully.", index_file
         )
 
 
-class DebRepoDriver(BaseRepoDriver):
+class DebRepoDriver(RepoDriver):
     def __init__(self, context, arch):
-        super(DebRepoDriver, self).__init__(
-            context, 'binary-' + _ARCH_MAPPING[arch]
-        )
+        self.connections = context.connections
+        self.arch = _ARCH_MAPPING[arch]
 
-    def get_package_dir(self, package):
-        return []
+    def create_index(self, destination):
+        return DebIndexWriter(self, destination)
 
-    def create_index_writer(self, destination):
-        return DebIndexWriter(self.context, destination)
-
-    def url_iterator(self, urls):
+    def parse_urls(self, urls):
         for url in urls:
             try:
                 baseurl, suite, comps = url.split(" ", 2)
@@ -108,26 +111,31 @@ class DebRepoDriver(BaseRepoDriver):
                 )
 
             if baseurl.endswith("/dists/"):
-                baseurl = baseurl[:-6]
+                baseurl = baseurl[:-7]
             elif baseurl.endswith("/dists"):
-                baseurl = baseurl[:-5]
+                baseurl = baseurl[:-6]
             elif baseurl.endswith("/"):
                 baseurl = baseurl[:-1]
 
             for comp in comps.split(":"):
-                yield baseurl, (suite, comp, self.arch)
+                yield baseurl, "/".join((suite, comp))
 
-    def load_packages(self, url, consumer):
+    def get_path(self, base, package):
+        baseurl = base or package.origin
+        return "/".join((baseurl, package.filename))
+
+    def load(self, baseurl, reponame, consumer):
         """Loads from Packages.gz."""
-        baseurl, repo = url
-
-        index_file = "{0}/dists/{1}/{2}/{3}/Packages.gz".format(baseurl, *repo)
+        index_file = "{0}/dists/{1}/{2}/Packages.gz".format(
+            baseurl, reponame, self.arch
+        )
         logger.info("loading packages from: %s", index_file)
-        with self.context.connections.acquire() as connection:
+        with self.connections.acquire() as connection:
             stream = GzipDecompress(connection.open_stream(index_file))
             pkg_iter = deb822.Packages.iter_paragraphs(stream)
             for dpkg in pkg_iter:
-                consumer(DebPackage(dpkg, baseurl + "/", repo))
+                consumer(DebPackage(dpkg, baseurl, reponame))
+
         logger.info(
             "packages from %s has been loaded successfully.", index_file
         )

@@ -17,10 +17,11 @@
 import six
 
 from packetary.library.index import Index
+
+from packetary.tests import base
 from packetary.tests.stubs.package import Package
 from packetary.tests.stubs.package import Relation
 from packetary.tests.stubs.package import VersionRange
-from packetary.tests import base
 
 
 class TestIndex(base.TestCase):
@@ -74,7 +75,9 @@ class TestIndex(base.TestCase):
         self.assertIs(
             p2, index.find(Relation("package0", VersionRange()))
         )
-        self.assertIsNone(index.find(Relation("package0", VersionRange("gt", 2))))
+        self.assertIsNone(
+            index.find(Relation("package0", VersionRange("gt", 2)))
+        )
 
     def test_find_newest_package(self):
         index = Index()
@@ -100,7 +103,9 @@ class TestIndex(base.TestCase):
         self.assertIs(
             p2, index.find(Relation("package0_o", VersionRange("eq", 1)))
         )
-        self.assertIsNone(index.find(Relation("package0_o", VersionRange("gt", 2))))
+        self.assertIsNone(
+            index.find(Relation("package0_o", VersionRange("gt", 2)))
+        )
 
     def test_find_provides(self):
         index = Index()
@@ -112,7 +117,9 @@ class TestIndex(base.TestCase):
         self.assertIs(
             p2, index.find(Relation("package0_p", VersionRange("eq", 2)))
         )
-        self.assertIsNone(index.find(Relation("package0_p", VersionRange("lt", 1))))
+        self.assertIsNone(
+            index.find(Relation("package0_p", VersionRange("lt", 1)))
+        )
 
     def test_len(self):
         index = Index()

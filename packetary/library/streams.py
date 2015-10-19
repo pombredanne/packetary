@@ -16,8 +16,8 @@
 
 import zlib
 
-from .constants import byte_lf
-from .constants import byte_null
+from packetary.library.constants import byte_lf
+from packetary.library.constants import byte_null
 
 
 class BufferedStream(object):

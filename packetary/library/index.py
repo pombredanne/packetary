@@ -99,13 +99,15 @@ class Index(object):
 
     def get_packages(self):
         """Gets the sorted list of packages."""
+
         for versions in six.itervalues(self.packages):
             for version in versions.values():
                 yield version
 
     def find(self, relation):
         """Finds the package by name and version.
-        @:param relation: the relation description
+
+        @:param relation: the package relation.
         @:returns: the package if it is found, otherwise None
         """
 
@@ -138,7 +140,13 @@ class Index(object):
             self.provides[provide.package][key] = provide
 
     def get_unresolved(self, unresolved=None):
-        """Gets the unresolved packages."""
+        """Gets the unresolved packages.
+
+        :param unresolved: the unresolved depends.
+            Note: It will be updated if it is not None.
+        :returns: the set of unresolved depends.
+        """
+
         if unresolved is None:
             unresolved = set()
 
@@ -157,7 +165,13 @@ class Index(object):
         return unresolved
 
     def resolve(self, requires):
-        """Resolves depends."""
+        """Resolves depends.
+
+        :param requires: the set of requirements.
+            Note. This parameter will be updated.
+        :returns: The set of resolved depends.
+        """
+
         unresolved = set()
         resolved = set()
         for require in _queue_iterator(requires):
@@ -180,11 +194,12 @@ class Index(object):
 
     @staticmethod
     def _find_version(versions, version):
-        """Finds concrete version by relation"""
+        """Finds concrete version by relation."""
         try:
             op = Index.operators[version.opname]
         except KeyError:
             raise ValueError(
-                "Undefined operation for versions relation: %r" % version.opname
+                "Undefined operation for versions relation: {0}"
+                .format(version.opname)
             )
         return op(versions, version.value)

@@ -24,7 +24,6 @@ class ListPackages(BaseProduceOutputCommand):
         "name",
         "version",
         "filename",
-        "url",
         "size",
         "checksum",
         "obsoletes",
@@ -32,16 +31,23 @@ class ListPackages(BaseProduceOutputCommand):
         "requires",
     )
 
-    def take_repo_action(self, driver, parsed_args):
+    def take_repo_action(self, context, parsed_args):
         return get_packages(
-            driver,
+            context,
+            parsed_args.type,
+            parsed_args.arch,
             parsed_args.origins,
             make_display_attr_getter(self.columns)
         )
 
 
 if __name__ == "__main__":
+    import sys
+
     from packetary.cli.app import test
-    #test("list", ListPackages, ["list", "-u", "http://mirror.yandex.ru/centos/7.1.1503/os", "-t", "yum", '-v', '-v', '--debug'])
-    test("list", ListPackages, ["list", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
-                                '--column', 'name', 'size', 'filename', '--sort-column', 'name', 'version'])
+
+    test(
+        "list",
+        ListPackages,
+        ["list"] + sys.argv + ["-v", "-v", "--debug"]
+    )

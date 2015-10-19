@@ -56,8 +56,8 @@ class Package(package.Package):
         return self._get_property('filename')
 
     @property
-    def url(self):
-        return self._get_property('url')
+    def origin(self):
+        return self._get_property('origin')
 
     @property
     def checksum(self):

@@ -39,7 +39,9 @@ class TestExecutor(base.TestCase):
         self.executor.execute(raise_error, on_complete)
         self.executor.execute(lambda: None, raise_error)
         self.executor.shutdown()
-        logger.exception.assert_called_with("Exception in callback: %s", "error")
+        logger.exception.assert_called_with(
+            "Exception in callback: %s", "error"
+        )
 
         self.assertEqual(2, len(results))
         self.assertIs(None, results[0])

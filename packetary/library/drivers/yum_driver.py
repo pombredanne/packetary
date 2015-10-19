@@ -12,18 +12,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from collections import defaultdict
+import logging
 import lxml.etree as etree
 import os
 import six
 import six.moves.urllib.parse as urlparse
 import subprocess
 
+from packetary.library.driver import IndexWriter
+from packetary.library.driver import RepoDriver
+from packetary.library.drivers.yum_package import YumPackage
 from packetary.library.streams import GzipDecompress
 
-from .base import IndexWriter
-from .base import logger
-from .base import BaseRepoDriver
-from .yum_package import YumPackage
+
+logger = logging.getLogger(__package__)
 
 
 _namespaces = {
@@ -50,15 +53,15 @@ createrepo = _find_createrepo()
 
 
 class YumIndexWriter(IndexWriter):
-    def __init__(self, context, destination):
-        self.context = context
-        self.destination = destination
-        self.repos = set()
+    def __init__(self, driver, destination):
+        self.destination = os.path.abspath(destination)
+        self.driver = driver
+        self.repos = defaultdict(set)
 
     def add(self, p):
-        self.repos.add(p.repo)
+        self.repos[p.reponame].add(p.filename)
 
-    def flush(self):
+    def flush(self, keep_existing=False):
         if createrepo is None:
             six.print_(
                 "Please install createrepo utility and run the following "
@@ -70,37 +73,56 @@ class YumIndexWriter(IndexWriter):
             command = subprocess.check_call
             executable = createrepo
 
-        for repo in self.repos:
-            path = os.path.join(self.destination, *repo)
+        for reponame, files in six.iteritems(self.repos):
+            path = os.path.join(self.destination, reponame, self.driver.arch)
             if os.path.exists(os.path.join(path, "repodata", "repomd.xml")):
+                if not keep_existing:
+                    self.driver.load(
+                        self.destination, reponame,
+                        lambda x: self._remove_dirty_package(x, files)
+                    )
                 cmd = [executable, path, "--update"]
             else:
                 cmd = [executable, path]
             command(cmd)
 
+    def _remove_dirty_package(self, p, known_files):
+        filename = p.filename
+        if filename not in known_files:
+            os.remove(self.driver.get_path(None, p))
+            logger.info("File %s was removed.", p.filename)
 
-class YumRepoDriver(BaseRepoDriver):
+
+class YumRepoDriver(RepoDriver):
     """Yum repositories implementation"""
 
-    def get_package_dir(self, package):
-        return package.repo
+    def __init__(self, context, arch):
+        self.connections = context.connections
+        self.arch = arch
 
-    def create_index_writer(self, destination):
-        return YumIndexWriter(self.context, destination)
+    def create_index(self, destination):
+        return YumIndexWriter(self, destination)
 
-    def url_iterator(self, urls):
+    def parse_urls(self, urls):
         for url in urls:
             if url.endswith("/"):
                 url = url[:-1]
-            yield "/".join((url, self.arch, ""))
+            yield url.rsplit("/", 1)
 
-    def load_packages(self, baseurl, consumer):
+    def get_path(self, base, package):
+        baseurl = base or package.origin
+        return "/".join((
+            baseurl, package.reponame, self.arch, package.filename
+        ))
+
+    def load(self, baseurl, reponame, consumer):
         """Reads packages from metdata."""
-        repomd = baseurl + "repodata/repomd.xml"
+        current_url = "/".join((baseurl, reponame, self.arch, ""))
+        repomd = current_url + "repodata/repomd.xml"
         logger.debug("repomd: %s", repomd)
 
         nodes = None
-        with self.context.connections.acquire() as connection:
+        with self.connections.acquire() as connection:
             repomd_tree = etree.parse(connection.open_stream(repomd))
 
             node = repomd_tree.find("./md:data[@type='primary']", _namespaces)
@@ -109,12 +131,13 @@ class YumRepoDriver(BaseRepoDriver):
             location = node.find("./md:location", _namespaces).attrib["href"]
 
             stream = GzipDecompress(connection.open_stream(
-                urlparse.urljoin(baseurl, location)
+                urlparse.urljoin(current_url, location)
             ))
             nodes = etree.parse(stream)
 
         for pkg_tag in nodes.iterfind("./main:package", _namespaces):
             consumer(YumPackage(
                 pkg_tag,
-                baseurl
+                baseurl,
+                reponame
             ))

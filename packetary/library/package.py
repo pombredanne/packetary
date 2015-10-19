@@ -46,13 +46,14 @@ class Package(object):
 
     @property
     @abc.abstractmethod
-    def url(self):
-        """The package`s url."""
+    def origin(self):
+        """The url of origin repository."""
 
     @property
     @abc.abstractmethod
     def checksum(self):
-        """The package`s checsum.
+        """The package`s checksum.
+
         :return: tuple(algorithm, checksum).
         """
 
@@ -112,6 +113,8 @@ _VersionRangeBase = collections.namedtuple(
 
 
 class VersionRange(_VersionRangeBase):
+    """Describes version in package`s relation."""
+
     def __new__(cls, opname=None, value=None):
         if isinstance(opname, (list, tuple)):
             if len(opname) > 1:
@@ -161,6 +164,8 @@ class VersionRange(_VersionRangeBase):
 
 
 class Relation(_RelationBase):
+    """Describes the package`s relation."""
+
     def __new__(cls, package, version, choice=None):
         return _RelationBase.__new__(cls, package, version, choice)
 

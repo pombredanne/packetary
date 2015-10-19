@@ -14,9 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from .connections import ConnectionsPool
-from .drivers import drivers
-from .executor import Executor, ExecutionScope
+from packetary.library.connections import ConnectionsPool
+from packetary.library.executor import ExecutionScope
+from packetary.library.executor import Executor
 
 
 class Context(object):
@@ -26,21 +26,18 @@ class Context(object):
         self.connections = ConnectionsPool(options)
         self.ignore_errors = options.get('ignore_errors', 0)
 
-    def get_execution_scope(self, ignore_errors=None):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.shutdown()
+
+    def create_scope(self, ignore_errors=None):
         """Gets the execution scope"""
         if ignore_errors is None:
             ignore_errors = self.ignore_errors
 
         return ExecutionScope(self.executor, ignore_errors)
-
-    def create_driver(self, kind, arch):
-        """Creates the repository driver"""
-        try:
-            return drivers[kind](self, arch)
-        except KeyError:
-            raise NotImplementedError(
-                "unsupported repository: %s" % kind
-            )
 
     def shutdown(self, wait=True):
         """Stops the execution."""

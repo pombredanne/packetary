@@ -15,14 +15,15 @@
 #    under the License.
 
 from collections import namedtuple
-import six.moves.urllib.parse as urlparse
 
 from packetary.library.package import Package
 from packetary.library.package import Relation
 from packetary.library.package import VersionRange
 
 
-_PackageVersion = namedtuple("_PackageVersion", ("epoch", "version", "release"))
+_PackageVersion = namedtuple(
+    "_PackageVersion", ("epoch", "version", "release")
+)
 
 
 _namespaces = {
@@ -83,11 +84,14 @@ def _get_relations(tag, name):
 
 class YumPackage(Package):
     """Yum package."""
-    def __init__(self, pkg_tag, baseurl):
+    def __init__(self, pkg_tag, baseurl, reponame):
         self.baseurl = baseurl
+        self.reponame = reponame
         self.repo = tuple(baseurl.rsplit("/", 3)[1:-1])
         self._name = _find(pkg_tag, "./main:name").text
-        self._version = PackageVersion(_find(pkg_tag, "./main:version").attrib)
+        self._version = PackageVersion(
+            _find(pkg_tag, "./main:version").attrib
+        )
         self._size = int(_find(pkg_tag, "./main:size").attrib.get("package"))
         self._checksum = _get_checksum(pkg_tag)
         self._filename = _find(pkg_tag, "./main:location").attrib["href"]
@@ -116,8 +120,8 @@ class YumPackage(Package):
         return self._filename
 
     @property
-    def url(self):
-        return urlparse.urljoin(self.baseurl, self._filename)
+    def origin(self):
+        return self.baseurl
 
     @property
     def requires(self):

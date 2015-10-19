@@ -66,23 +66,22 @@ class BaseRepoCommand(command.Command):
 
     def take_action(self, parsed_args):
         """See the Command.take_action.
-        :returns: the result of take_repo_action
+
+        :return: the result of take_repo_action
         :rtype: object
         """
-        context = create_context(self.app_args.__dict__)
-        signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
-        try:
+        with create_context(self.app_args.__dict__) as context:
+            signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
             return self.take_repo_action(
-                context.create_driver(parsed_args.type, parsed_args.arch),
+                context,
                 parsed_args
             )
-        finally:
-            context.shutdown()
 
     @abc.abstractmethod
-    def take_repo_action(self, driver, parsed_args):
+    def take_repo_action(self, context, parsed_args):
         """Takes action on repository.
-        :returns: the action result
+
+        :return: the action result
         """
 
 
@@ -161,7 +160,7 @@ class BaseProduceOutputCommand(BaseRepoCommand):
         # Use custom output producer, because the
         # cliff.lister with default formatters does not work
         # with large arrays of data
-        # TODO write custom formatter, that supports data streaming
+        # TODO(custom formatter)
         data = self.take_action(parsed_args)
         self.produce_output(parsed_args, data)
         return 0

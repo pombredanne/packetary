@@ -15,11 +15,11 @@
 #    under the License.
 
 
-from . import deb_driver
-from . import yum_driver
+from packetary.library.drivers import deb_driver
+from packetary.library.drivers import yum_driver
 
 
-drivers = {
+drivers_kind = {
     "deb": deb_driver.DebRepoDriver,
     "yum": yum_driver.YumRepoDriver
 }

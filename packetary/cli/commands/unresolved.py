@@ -26,14 +26,22 @@ class ListUnresolved(BaseProduceOutputCommand):
         "choice",
     )
 
-    def take_repo_action(self, driver, parsed_args):
+    def take_repo_action(self, context, parsed_args):
         return get_unresolved_depends(
-            driver,
+            context,
+            parsed_args.type,
+            parsed_args.arch,
             parsed_args.origins,
             make_display_attr_getter(self.columns)
         )
 
 if __name__ == "__main__":
+    import sys
+
     from packetary.cli.app import test
-    # test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
-    test("unresolved", ListUnresolved, ["unresolved", "-o", "https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main", "-t", "deb", '-v', '-v', '--debug'])
+
+    test(
+        "unresolved",
+        ListUnresolved,
+        ["unresolved"] + sys.argv + ["-v", "-v", "--debug"]
+    )

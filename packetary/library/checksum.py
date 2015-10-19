@@ -14,14 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-
 import hashlib
 
 
 def _checksum(method):
-    """Gets the function to calculate checksum,
-    with selected method.
+    """Gets the function to calculate checksum of stream with selected method.
+
     """
 
     def calc(stream, chunksize=16 * 1024):
