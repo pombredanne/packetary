@@ -42,6 +42,7 @@ def get_display_value(v):
     return six.text_type(v)
 
 
-def get_displayable_object_attrs(obj, fields):
+def make_display_attr_getter(fields):
     """Gets object attributes in displayable format."""
-    return [get_display_value(v) for v in get_object_attrs(obj, fields)]
+    return lambda x: [get_display_value(v) for v in get_object_attrs(x, fields)]
+

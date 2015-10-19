@@ -37,6 +37,8 @@ class IndexWriter(object):
 
 
 class BaseRepoDriver(driver.RepoDriver):
+    """The common implementation for RepoDriver."""
+
     def __init__(self, context, arch):
         self.arch = arch
         self.context = context
@@ -61,7 +63,7 @@ class BaseRepoDriver(driver.RepoDriver):
         """Gets iterator over urls"""
 
     def load(self, urls, consumer):
-        """See Repository.load"""
+        """Overrides the base class method."""
         if not isinstance(urls, (list, tuple)):
             urls = [urls]
 
@@ -73,6 +75,7 @@ class BaseRepoDriver(driver.RepoDriver):
                 )
 
     def clone(self, producer, destination):
+        """Overrides the base class method."""
         index_writer = self.create_index_writer(destination)
         with self.context.get_execution_scope() as scope:
             for package in producer:

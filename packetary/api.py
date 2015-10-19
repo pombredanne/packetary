@@ -14,26 +14,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from .drivers import drivers
-from .index import Index
+from packetary.library.context import Context
+from packetary.library.index import Index
 
 
-def create_repo_driver(context, kind, arch):
-    """Creates the repository driver"""
-    try:
-        return drivers[kind](context, arch)
-    except KeyError:
-        raise NotImplementedError(
-            "unsupported repository: %s" % kind
-        )
+def create_context(options):
+    """Creates context"""
+    return Context(options)
 
 
-def createmirror(driver, destination, origin, debs=None):
+def createmirror(driver, destination, origin, debs=None, keep_existing=True):
     """Creates mirror.
     :param driver: the repository driver
     :param destination: the destination folder
     :param origin: the url(s) to origin repository
     :param debs: the url(s) of repositories to get dependency
+    :param keep_existing: Remove local packages that does not exist in repo.
     :return: the number of copied packages
     """
     packages = Index()

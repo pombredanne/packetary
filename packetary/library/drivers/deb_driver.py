@@ -107,9 +107,9 @@ class DebRepoDriver(BaseRepoDriver):
                     .format(url)
                 )
 
-            if baseurl.endswith("dists/"):
+            if baseurl.endswith("/dists/"):
                 baseurl = baseurl[:-1]
-            elif baseurl.endswith("dists"):
+            elif baseurl.endswith("/dists"):
                 baseurl = baseurl[:-5]
             elif baseurl.endswith("/"):
                 baseurl = baseurl[:-1]
@@ -127,7 +127,7 @@ class DebRepoDriver(BaseRepoDriver):
             stream = GzipDecompress(connection.open_stream(index_file))
             pkg_iter = deb822.Packages.iter_paragraphs(stream)
             for dpkg in pkg_iter:
-                consumer(DebPackage(dpkg, baseurl, repo))
+                consumer(DebPackage(dpkg, baseurl + "/", repo))
         logger.info(
             "packages from %s has been loaded successfully.", index_file
         )

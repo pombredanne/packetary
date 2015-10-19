@@ -43,7 +43,7 @@ class Executor(object):
     def __init__(self, options):
         threads_num = options.get('threads_count', 1)
         queue_size = options.get('queue_size') or 100
-        self.queue = six.moves.queue.Queue(maxsize=queue_size)
+        self.tasks = six.moves.queue.Queue(maxsize=queue_size)
         self.threads = threads = []
         self._closed = False
         while threads_num > 0:
@@ -59,7 +59,7 @@ class Executor(object):
     def execute(self, func, on_complete):
         """Executes in thread-pool."""
         if not self._closed:
-            self.queue.put((func, _callback(on_complete)))
+            self.tasks.put((func, _callback(on_complete)))
 
     def shutdown(self, wait=True):
         """Shutdowns thread-pool."""
@@ -68,7 +68,7 @@ class Executor(object):
         logger.debug("Shutting down executor...")
         threads_num = len(self.threads)
         while threads_num:
-            self.queue.put(self._stopper)
+            self.tasks.put(self._stopper)
             threads_num -= 1
 
         if wait:
@@ -76,7 +76,7 @@ class Executor(object):
             while self.threads:
                 self.threads.pop().join()
             logger.debug("Waiting jobs...")
-            self.queue.join()
+            self.tasks.join()
         else:
             while self.threads:
                 self.threads.pop()
@@ -86,7 +86,7 @@ class Executor(object):
     def _worker(self):
         while True:
             try:
-                task = self.queue.get(10)
+                task = self.tasks.get(10)
                 if task is Executor._stopper:
                     break
 
@@ -99,7 +99,7 @@ class Executor(object):
                 except Exception as e:
                     on_complete(e)
             finally:
-                self.queue.task_done()
+                self.tasks.task_done()
 
 
 class ExecutionScope(object):

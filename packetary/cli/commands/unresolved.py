@@ -14,9 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.commands.base import BaseProduceOutputCommand
-from packetary.commands.utils import get_displayable_object_attrs
-from packetary.library.api import get_unresolved_depends
+from packetary.api import get_unresolved_depends
+from packetary.cli.commands.base import BaseProduceOutputCommand
+from packetary.cli.commands.utils import make_display_attr_getter
 
 
 class ListUnresolved(BaseProduceOutputCommand):
@@ -30,10 +30,10 @@ class ListUnresolved(BaseProduceOutputCommand):
         return get_unresolved_depends(
             driver,
             parsed_args.origins,
-            lambda x: get_displayable_object_attrs(x, self.columns)
+            make_display_attr_getter(self.columns)
         )
 
 if __name__ == "__main__":
-    from packetary.app import test
-    test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
-    # test("unresolved", ListUnresolved, ["unresolved", "-u", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])
+    from packetary.cli.app import test
+    # test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/centos/7.1.1503/updates", "-t", "yum", '-v', '-v', '--debug'])
+    test("unresolved", ListUnresolved, ["unresolved", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-t", "deb", '-v', '-v', '--debug'])

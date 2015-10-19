@@ -15,14 +15,13 @@
 #    under the License.
 
 import abc
+import signal
 
 from cliff import command
-import signal
 import six
 
-from packetary.commands.utils import read_lines_from_file
-from packetary.library.api import create_repo_driver
-from packetary.library.context import Context
+from packetary.api import create_context
+from packetary.cli.commands.utils import read_lines_from_file
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -70,14 +69,13 @@ class BaseRepoCommand(command.Command):
         :returns: the result of take_repo_action
         :rtype: object
         """
-        context = Context(self.app_args.__dict__)
+        context = create_context(self.app_args.__dict__)
         signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
         try:
-            driver = create_repo_driver(
-                context, parsed_args.type, parsed_args.arch
+            return self.take_repo_action(
+                context.create_driver(parsed_args.type, parsed_args.arch),
+                parsed_args
             )
-
-            return self.take_repo_action(driver, parsed_args)
         finally:
             context.shutdown()
 

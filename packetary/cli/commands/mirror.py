@@ -16,9 +16,9 @@
 
 import six
 
-from packetary.commands.base import BaseRepoCommand
-from packetary.commands.utils import read_lines_from_file
-from packetary.library.api import createmirror
+from packetary.api import createmirror
+from packetary.cli.commands.base import BaseRepoCommand
+from packetary.cli.commands.utils import read_lines_from_file
 
 
 class CreateMirror(BaseRepoCommand):
@@ -59,7 +59,7 @@ class CreateMirror(BaseRepoCommand):
 
 
 if __name__ == "__main__":
-    from packetary.app import test
+    from packetary.cli.app import test
     test("mirror", CreateMirror, [
         "mirror", "-o", "http://mirror.yandex.ru/ubuntu/dists trusty main", "-t", "deb", '-v', '-v', '--debug',
         "-r", "http://mirror.yandex.ru/ubuntu/dists trusty-updates main", "-d", "../mirror/ubuntu"
