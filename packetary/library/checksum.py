@@ -29,7 +29,7 @@ def _checksum(method):
             if not chunk:
                 break
             s.update(chunk)
-        return s.hexdigits()
+        return s.hexdigest()
     return calc
 
 

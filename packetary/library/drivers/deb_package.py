@@ -42,10 +42,11 @@ def _get_version_range(rel_version):
 class DebPackage(Package):
     """Debian package."""
 
-    def __init__(self, dpkg, baseurl, reponame):
+    def __init__(self, dpkg, baseurl, suite, comp):
         self.dpkg = dpkg
         self.baseurl = baseurl
-        self.reponame = reponame
+        self.suite = suite
+        self.comp = comp
         self._version = debian_support.Version(dpkg['version'])
         self._size = int(dpkg['size'])
 
