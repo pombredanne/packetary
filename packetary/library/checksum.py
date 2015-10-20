@@ -15,13 +15,13 @@
 #    under the License.
 
 import hashlib
+import functools
 
 
 def _checksum(method):
-    """Gets the function to calculate checksum of stream with selected method.
-
+    """Gets the function to calculate checksum of stream with method.
     """
-
+    @functools.wraps(method)
     def calc(stream, chunksize=16 * 1024):
         s = method()
         while True:

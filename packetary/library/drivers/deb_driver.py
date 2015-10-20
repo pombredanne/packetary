@@ -161,7 +161,7 @@ class DebIndexWriter(IndexWriter):
                     for f in files:
                         filepath = os.path.join(root, f)
                         with closing(open(filepath, "rb")) as fobj:
-                            meta.write(six.u(hash_method(fobj)))
+                            meta.write(hash_method(fobj))
                             size_str = six.text_type(
                                 os.fstat(fobj.fileno()).st_size
                             )
