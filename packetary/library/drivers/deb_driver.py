@@ -57,10 +57,11 @@ class DebIndexWriter(IndexWriter):
     def add(self, p):
         self.index[(p.suite, p.comp)][p] = None
         if self.origin is None:
-            self.origin = p.dpkg['origin']
+            self.origin = p.dpkg.get('origin')
 
     def flush(self, keep_existing=True):
         suites = set()
+        self.origin = self.origin or "Ubuntu"
         for repo, packages in six.iteritems(self.index):
             self._rebuild_index(repo, packages, keep_existing)
             suites.add(repo[0])
