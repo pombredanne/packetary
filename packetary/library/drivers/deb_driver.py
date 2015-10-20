@@ -23,7 +23,6 @@ import logging
 import os
 import six
 
-from packetary.library.constants import byte_lf
 from packetary.library.driver import IndexWriter
 from packetary.library.driver import RepoDriver
 from packetary.library.drivers.deb_package import DebPackage
@@ -78,7 +77,7 @@ class DebIndexWriter(IndexWriter):
         with closing(gzip.open(tmp, "wb")) as index:
             for p in packages.keys():
                 p.dpkg.dump(fd=index)
-                index.write(byte_lf)
+                index.write(b"\n")
                 handler(p)
 
         os.rename(tmp, index_file)

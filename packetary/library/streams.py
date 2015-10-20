@@ -16,9 +16,6 @@
 
 import zlib
 
-from packetary.library.constants import byte_lf
-from packetary.library.constants import byte_null
-
 
 class BufferedStream(object):
     """Stream object."""
@@ -26,14 +23,14 @@ class BufferedStream(object):
 
     def __init__(self, fileobj):
         self.fileobj = fileobj
-        self.buffer = byte_null
+        self.buffer = b""
 
     def __getattr__(self, item):
         return getattr(self.fileobj, item)
 
     def _read_buffer(self):
         tmp = self.buffer
-        self.buffer = byte_null
+        self.buffer = b""
         return tmp
 
     def _align_chunk(self, chunk, size):
@@ -66,7 +63,7 @@ class BufferedStream(object):
         return result
 
     def readline(self):
-        pos = self.buffer.find(byte_lf)
+        pos = self.buffer.find(b"\n")
         if pos >= 0:
             line = self._align_chunk(self.buffer, pos + 1)
         else:
@@ -75,7 +72,7 @@ class BufferedStream(object):
                 chunk = self._read()
                 if not chunk:
                     break
-                pos = chunk.find(byte_lf)
+                pos = chunk.find(b"\n")
                 if pos >= 0:
                     line += self._align_chunk(chunk, pos + 1)
                     break
