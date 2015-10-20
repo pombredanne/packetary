@@ -15,6 +15,8 @@
 #    under the License.
 
 import mock
+import six
+import time
 
 from packetary.library import connections
 from packetary.tests import base
@@ -75,6 +77,161 @@ class TestConnection(base.TestCase):
 
     def test_open_stream(self):
         self.connection.open_stream("/test/file")
-        args = self.connection.opener.open.args
-        print(args)
         self.assertEqual(1, self.connection.opener.open.call_count)
+        args = self.connection.opener.open.call_args[0]
+        self.assertIsInstance(args[0], connections.RetryableRequest)
+        self.assertEqual(2, args[0].retries)
+
+    @mock.patch("packetary.library.connections.logger")
+    def test_retries_on_io_error(self, logger):
+        self.connection.opener.open.side_effect = [
+            IOError("I/O error"),
+            mock.MagicMock()
+        ]
+        self.connection.open_stream("/test/file")
+        self.assertEqual(2, self.connection.opener.open.call_count)
+        logger.exception.assert_called_with(
+            "Failed to open url: %s. retries left - %d.",
+            "I/O error", 1
+        )
+
+        self.connection.opener.open.side_effect = IOError("I/O error")
+        with self.assertRaises(IOError):
+            self.connection.open_stream("/test/file")
+        logger.exception.assert_called_with(
+            "Failed to open url: %s. retries left - %d.",
+            "I/O error", 0
+        )
+
+    def test_raise_other_errors(self):
+        self.connection.opener.open.side_effect = \
+            connections.urllib_error.HTTPError("", 500, "", {}, None)
+
+        with self.assertRaises(connections.urllib_error.URLError):
+            self.connection.open_stream("/test/file")
+
+        self.assertEqual(1, self.connection.opener.open.call_count)
+
+    @mock.patch("packetary.library.connections.os")
+    def test_retrieve_from_offset(self, os):
+        os.path.mkdirs.side_effect = OSError(17, "")
+        os.open.return_value = 1
+        response = mock.MagicMock()
+        self.connection.opener.open.return_value = response
+        response.read.side_effect = [b"test", b""]
+        self.connection.retrieve("/file/src", "/file/dst", 10)
+        os.lseek.assert_called_once_with(1, 10, os.SEEK_SET)
+        os.ftruncate.assert_called_once_with(1, 10)
+        self.assertEqual(1, os.write.call_count)
+        os.fsync.assert_called_once_with(1)
+        os.close.assert_called_once_with(1)
+
+    @mock.patch.multiple(
+        "packetary.library.connections",
+        logger=mock.DEFAULT,
+        os=mock.DEFAULT
+    )
+    def test_retrieve_from_offset_fail(self, os, logger):
+        os.path.mkdirs.side_effect = OSError(17, "")
+        os.open.return_value = 1
+        response = mock.MagicMock()
+        self.connection.opener.open.side_effect = [
+            connections.RangeError("error"), response
+        ]
+        response.read.side_effect = [b"test", b""]
+        self.connection.retrieve("/file/src", "/file/dst", 10)
+        logger.warning.assert_called_once_with(
+            "Failed to resume download, starts from begin: %s",
+            "/file/src"
+        )
+        os.lseek.assert_called_once_with(1, 0, os.SEEK_SET)
+        os.ftruncate.assert_called_once_with(1, 0)
+        self.assertEqual(1, os.write.call_count)
+        os.fsync.assert_called_once_with(1)
+        os.close.assert_called_once_with(1)
+
+
+@mock.patch("packetary.library.connections.logger")
+class TestRetryHandler(base.TestCase):
+    def setUp(self):
+        super(TestRetryHandler, self).setUp()
+        self.handler = connections.RetryHandler()
+        self.handler.add_parent(mock.MagicMock())
+
+    def test_start_request(self, logger):
+        request = mock.MagicMock()
+        request.offset = 0
+        request.get_full_url.return_value = "/file/test"
+        request = self.handler.http_request(request)
+        request.start_time <= time.time()
+        logger.debug.assert_called_with("start request: %s", "/file/test")
+        request.offset = 1
+        request = self.handler.http_request(request)
+        request.add_header.assert_called_once_with('Range', 'bytes=1-')
+
+    def test_handle_response(self, logger):
+        request = mock.MagicMock()
+        request.offset = 0
+        request.start_time.__rsub__.return_value = 0.01
+        request.get_full_url.return_value = "/file/test"
+        response = mock.MagicMock()
+        response.getcode.return_value = 200
+        response.msg = "test"
+        r = self.handler.http_response(request, response)
+        self.assertIsInstance(r, connections.ResumeableResponse)
+        logger.debug.assert_called_with(
+            "finish request: %s - %d (%s), duration - %d ms.",
+            "/file/test", 200, "test", 10
+        )
+
+    def test_handle_partial_response(self, _):
+        request = mock.MagicMock()
+        request.offset = 1
+        request.get_full_url.return_value = "/file/test"
+        response = mock.MagicMock()
+        response.getcode.return_value = 200
+        response.msg = "test"
+        with self.assertRaises(connections.RangeError):
+            self.handler.http_response(request, response)
+        response.getcode.return_value = 206
+        self.handler.http_response(request, response)
+
+    def test_error(self, logger):
+        request = mock.MagicMock()
+        request.get_full_url.return_value = "/test"
+        request.retries = 1
+        self.handler.http_error(
+            request, mock.MagicMock(), 500, "error", mock.MagicMock()
+        )
+        logger.warning.assert_called_with(
+            "fail request: %s - %d(%s), retries left - %d.",
+            "/test", 500, "error", 0
+        )
+        self.handler.http_error(
+            request, mock.MagicMock(), 500, "error", mock.MagicMock()
+        )
+        self.handler.parent.open.assert_called_once_with(request)
+
+
+class TestResumeableResponse(base.TestCase):
+    def setUp(self):
+        super(TestResumeableResponse, self).setUp()
+        self.request = mock.MagicMock()
+        self.opener = mock.MagicMock()
+        self.stream = mock.MagicMock()
+
+    def test_resume_read(self):
+        self.request.offset = 0
+        response = connections.ResumeableResponse(
+            self.request,
+            self.stream,
+            self.opener
+        )
+        self.stream.read.side_effect = [
+            b"chunk1", IOError(), b"chunk2", b""
+        ]
+        self.opener.error.return_value = response
+        data = response.read()
+        self.assertEqual(b"chunk1chunk2", data)
+        self.assertEqual(12, self.request.offset)
+        self.assertEqual(1, self.opener.error.call_count)

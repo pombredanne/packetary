@@ -25,32 +25,32 @@ class TestBufferedStream(base.TestCase):
     def setUp(self):
         super(TestBufferedStream, self).setUp()
         self.stream = streams.BufferedStream(
-            six.BytesIO(six.b("line1\nline2\nline3\n"))
+            six.BytesIO(b"line1\nline2\nline3\n")
         )
 
     def test_read(self):
         self.stream.chunk_size = 10
         chunk = self.stream.read(5)
-        self.assertEqual(six.b("line1"), chunk)
-        self.assertEqual(six.b("\nline"), self.stream.buffer)
+        self.assertEqual(b"line1", chunk)
+        self.assertEqual(b"\nline", self.stream.buffer)
         chunk = self.stream.read(1024)
-        self.assertEqual(six.b("\nline2\nline3\n"), chunk)
-        self.assertEqual(six.b(""), self.stream.buffer)
+        self.assertEqual(b"\nline2\nline3\n", chunk)
+        self.assertEqual(b"", self.stream.buffer)
 
     def test_readline(self):
         self.stream.chunk_size = 12
         chunk = self.stream.readline()
-        self.assertEqual(six.b("line1\n"), chunk)
-        self.assertEqual(six.b("line2\n"), self.stream.buffer)
+        self.assertEqual(b"line1\n", chunk)
+        self.assertEqual(b"line2\n", self.stream.buffer)
         lines = list(self.stream.readlines())
-        self.assertEqual([six.b("line2\n"), six.b("line3\n")], lines)
-        self.assertEqual(six.b(""), self.stream.buffer)
+        self.assertEqual([b"line2\n", b"line3\n"], lines)
+        self.assertEqual(b"", self.stream.buffer)
 
     def test_readlines(self):
         self.stream.chunk_size = 12
         lines = list(self.stream.readlines())
         self.assertEqual(
-            [six.b("line1\n"), six.b("line2\n"), six.b("line3\n")],
+            [b"line1\n", b"line2\n", b"line3\n"],
             lines)
 
 
@@ -59,7 +59,7 @@ class TestGzipDecompress(base.TestCase):
     def setUpClass(cls):
         cls.gzipped = six.BytesIO()
         gz = gzip.GzipFile(fileobj=cls.gzipped, mode="w")
-        gz.write(six.b("line1\nline2\nline3\n"))
+        gz.write(b"line1\nline2\nline3\n")
         gz.flush()
         gz.close()
 
@@ -70,24 +70,24 @@ class TestGzipDecompress(base.TestCase):
 
     def test_read(self):
         chunk = self.stream.read(5)
-        self.assertEqual(six.b("line1"), chunk)
-        self.assertEqual(six.b("\nline2\nline3\n"), self.stream.buffer)
+        self.assertEqual(b"line1", chunk)
+        self.assertEqual(b"\nline2\nline3\n", self.stream.buffer)
         chunk = self.stream.read(1024)
-        self.assertEqual(six.b("\nline2\nline3\n"), chunk)
-        self.assertEqual(six.b(""), self.stream.buffer)
+        self.assertEqual(b"\nline2\nline3\n", chunk)
+        self.assertEqual(b"", self.stream.buffer)
 
     def test_readline(self):
         self.stream.chunk_size = 12
         chunk = self.stream.readline()
-        self.assertEqual(six.b("line1\n"), chunk)
-        self.assertEqual(six.b("line2\nline3\n"), self.stream.buffer)
+        self.assertEqual(b"line1\n", chunk)
+        self.assertEqual(b"line2\nline3\n", self.stream.buffer)
         lines = list(self.stream.readlines())
-        self.assertEqual([six.b("line2\n"), six.b("line3\n")], lines)
-        self.assertEqual(six.b(""), self.stream.buffer)
+        self.assertEqual([b"line2\n", b"line3\n"], lines)
+        self.assertEqual(b"", self.stream.buffer)
 
     def test_readlines(self):
         self.stream.chunk_size = 12
         lines = list(self.stream.readlines())
         self.assertEqual(
-            [six.b("line1\n"), six.b("line2\n"), six.b("line3\n")],
+            [b"line1\n", b"line2\n", b"line3\n"],
             lines)

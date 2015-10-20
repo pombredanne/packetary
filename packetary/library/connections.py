@@ -37,9 +37,9 @@ class RetryableRequest(urllib_request.Request):
     start_time = 0
 
 
-class RetryableResponse(BufferedStream):
+class ResumeableResponse(BufferedStream):
     def __init__(self, request, response, opener):
-        super(RetryableResponse, self).__init__(response)
+        super(ResumeableResponse, self).__init__(response)
         self.request = request
         self.opener = opener
 
@@ -75,14 +75,14 @@ class RetryHandler(urllib_request.BaseHandler):
         )
         if request.offset > 0 and response.getcode() != 206:
             raise RangeError("Server does not support ranges.")
-        return RetryableResponse(request, response, self.parent)
+        return ResumeableResponse(request, response, self.parent)
 
     def http_error(self, req, fp, code, msg, hdrs):
         if code >= 500 and req.retries > 0:
             req.retries -= 1
             logger.warning(
                 "fail request: %s - %d(%s), retries left - %d.",
-                req.get_full_url(), code, msg, req.retry_number
+                req.get_full_url(), code, msg, req.retries
             )
             return self.parent.open(req)
 
@@ -109,16 +109,16 @@ class Connection(object):
         while 1:
             try:
                 return self.opener.open(request)
-            except urllib_error.HTTPError:
+            except (RangeError, urllib_error.HTTPError):
                 raise
             except IOError as e:
-                if request.retries < 0:
+                if request.retries <= 0:
                     raise
-                logger.error(
+                request.retries -= 1
+                logger.exception(
                     "Failed to open url: %s. retries left - %d.",
                     str(e), request.retries
                 )
-                request.retries -= 1
 
     @staticmethod
     def _ensure_dir_exists(dst):
@@ -130,9 +130,9 @@ class Connection(object):
                 raise
 
     def _copy_stream(self, fd, url, offset):
+        source = self.open_stream(url, offset)
         os.ftruncate(fd, offset)
         os.lseek(fd, offset, os.SEEK_SET)
-        source = self.open_stream(url, offset)
         chunk_size = 16 * 1024
         while 1:
             chunk = source.read(chunk_size)

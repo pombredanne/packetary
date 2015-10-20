@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
+byte_null = b""
 
-byte_null = six.b("")
-
-byte_lf = six.b("\n")
+byte_lf = b"\n"
