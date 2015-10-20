@@ -69,7 +69,7 @@ class Application(app.App):
         )
         parser.add_argument(
             "--connection-proxy",
-            default=2,
+            default=None,
             type=int,
             metavar="http://username:password@proxy_host:proxy_port",
             help="The http proxy url."

@@ -172,9 +172,10 @@ class ConnectionContext(object):
 class ConnectionsPool(object):
     def __init__(self, options):
         retries = options.get("retries_count", 0)
-        if "connection_proxy" in options:
+        http_proxy = options.get("connection_proxy")
+        if http_proxy:
             proxies = {
-                "http": options["connection_proxy"],
+                "http": http_proxy,
             }
         else:
             proxies = None
