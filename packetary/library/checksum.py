@@ -14,13 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import hashlib
 import functools
+import hashlib
 
 
 def _checksum(method):
-    """Gets the function to calculate checksum of stream with method.
-    """
+    """Gets the function to calculate checksum of stream with method."""
+
     @functools.wraps(method)
     def calc(stream, chunksize=16 * 1024):
         s = method()

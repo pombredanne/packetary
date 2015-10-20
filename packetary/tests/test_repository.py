@@ -56,10 +56,12 @@ class TestRepository(base.TestCase):
         ]
 
         self.repo.copy_packages(packages, "target", True)
+        index_writer = self.repo.driver.create_index(".")
         self.assertEqual(
-            len(packages),
-            self.repo.driver.create_index(".").add.call_count
+            len(packages), index_writer.add.call_count
         )
+        index_writer.flush.assert_called_once_with(True)
+
         retrieve = self.repo.context.connections.get().__enter__().retrieve
         call_args = retrieve.call_args_list
         self.assertEqual(3, retrieve.call_count)
