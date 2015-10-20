@@ -72,3 +72,9 @@ class TestConnection(base.TestCase):
         request2 = self.connection.get_request("http://server/path", 100)
         self.assertEqual("http://server/path", request2.get_full_url())
         self.assertEqual(100, request2.offset)
+
+    def test_open_stream(self):
+        self.connection.open_stream("/test/file")
+        args = self.connection.opener.open.args
+        print(args)
+        self.assertEqual(1, self.connection.opener.open.call_count)

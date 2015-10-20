@@ -194,7 +194,9 @@ class ConnectionsPool(object):
         self.free = connections
 
     def get(self, timeout=None):
-        return ConnectionContext(self.free.get(timeout), self._release)
+        return ConnectionContext(
+            self.free.get(timeout=timeout), self._release
+        )
 
     def _release(self, connection):
         self.free.put(connection)
