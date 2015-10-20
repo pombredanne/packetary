@@ -17,7 +17,7 @@
 import logging
 import os
 
-from drivers import drivers_kind
+from packetary.library.drivers import drivers_kind
 
 
 logger = logging.getLogger(__package__)
@@ -74,5 +74,5 @@ class Repository(object):
             "download: %s - %s, offset: %d",
             src_path, dst_path, offset
         )
-        with connections.acquire() as connection:
+        with connections.get() as connection:
             connection.retrieve(src_path, dst_path, offset)

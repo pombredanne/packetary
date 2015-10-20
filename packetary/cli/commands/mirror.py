@@ -76,5 +76,5 @@ if __name__ == "__main__":
     test(
         "mirror",
         CreateMirror,
-        ["mirror"] + sys.argv + ["-v", "-v", "--debug"]
+        ["mirror"] + sys.argv[1:] + ["-v", "-v", "--debug"]
     )

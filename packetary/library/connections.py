@@ -19,6 +19,7 @@ import os
 import six
 import six.moves.urllib.request as urllib_request
 import six.moves.urllib_error as urllib_error
+import time
 
 from packetary.library.streams import BufferedStream
 
@@ -33,6 +34,7 @@ class RangeError(urllib_error.URLError):
 class RetryableRequest(urllib_request.Request):
     offset = 0
     retries = 1
+    start_time = 0
 
 
 class RetryableResponse(BufferedStream):
@@ -61,23 +63,25 @@ class RetryHandler(urllib_request.BaseHandler):
         logger.debug("start request: %s", request.get_full_url())
         if request.offset > 0:
             request.add_header('Range', 'bytes=%d-' % request.offset)
+        request.start_time = time.time()
         return request
 
     def http_response(self, request, response):
         # the server should response partial content if range is specified
         logger.debug(
-            "finish request: %s - %d (%s)",
-            request.get_full_url(), response.getcode(), response.msg
+            "finish request: %s - %d (%s), duration - %d ms.",
+            request.get_full_url(), response.getcode(), response.msg,
+            int((time.time() - request.start_time) * 1000)
         )
         if request.offset > 0 and response.getcode() != 206:
-            raise RangeError("The server does not support ranges.")
+            raise RangeError("Server does not support ranges.")
         return RetryableResponse(request, response, self.parent)
 
     def http_error(self, req, fp, code, msg, hdrs):
         if code >= 500 and req.retries > 0:
             req.retries -= 1
             logger.warning(
-                "retry: %s, %d %s [%d]",
+                "fail request: %s - %d(%s), retries left - %d.",
                 req.get_full_url(), code, msg, req.retry_number
             )
             return self.parent.open(req)
@@ -111,7 +115,7 @@ class Connection(object):
                 if request.retries < 0:
                     raise
                 logger.error(
-                    "Failed to open url: %s. retries left(%d)",
+                    "Failed to open url: %s. retries left - %d.",
                     str(e), request.retries
                 )
                 request.retries -= 1
@@ -154,15 +158,15 @@ class Connection(object):
 
 
 class ConnectionContext(object):
-    def __init__(self, connection, pool):
+    def __init__(self, connection, on_exit):
         self.connection = connection
-        self.pool = pool
+        self.on_exit = on_exit
 
     def __enter__(self):
         return self.connection
 
     def __exit__(self, *_):
-        self.pool.release(self.connection)
+        self.on_exit(self.connection)
 
 
 class ConnectionsPool(object):
@@ -170,8 +174,7 @@ class ConnectionsPool(object):
         retries = options.get("retries_count", 0)
         if "connection_proxy" in options:
             proxies = {
-                "http_proxy": options["connection_proxy"],
-                "https_proxy": options["connection_proxy"],
+                "http": options["connection_proxy"],
             }
         else:
             proxies = None
@@ -182,15 +185,15 @@ class ConnectionsPool(object):
         )
 
         limit = max(options.get("connection_count", 1), 1)
-        pool = six.moves.queue.Queue()
+        connections = six.moves.queue.Queue()
         while limit > 0:
-            pool.put(Connection(opener, retries))
+            connections.put(Connection(opener, retries))
             limit -= 1
 
-        self.pool = pool
+        self.free = connections
 
-    def acquire(self):
-        return ConnectionContext(self.pool.get(), self)
+    def get(self, timeout=None):
+        return ConnectionContext(self.free.get(timeout), self._release)
 
-    def release(self, connection):
-        self.pool.put(connection)
+    def _release(self, connection):
+        self.free.put(connection)

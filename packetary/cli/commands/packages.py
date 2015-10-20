@@ -49,5 +49,5 @@ if __name__ == "__main__":
     test(
         "list",
         ListPackages,
-        ["list"] + sys.argv + ["-v", "-v", "--debug"]
+        ["list"] + sys.argv[1:] + ["-v", "-v", "--debug"]
     )

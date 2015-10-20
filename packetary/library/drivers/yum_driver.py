@@ -119,20 +119,20 @@ class YumRepoDriver(RepoDriver):
         """Reads packages from metdata."""
         current_url = "/".join((baseurl, reponame, self.arch, ""))
         repomd = current_url + "repodata/repomd.xml"
-        logger.debug("repomd: %s", repomd)
+        logger.info("repomd: %s", repomd)
 
         nodes = None
-        with self.connections.acquire() as connection:
+        with self.connections.get() as connection:
             repomd_tree = etree.parse(connection.open_stream(repomd))
 
             node = repomd_tree.find("./md:data[@type='primary']", _namespaces)
             if node is None:
                 raise ValueError("malformed meta: %s" % repomd)
             location = node.find("./md:location", _namespaces).attrib["href"]
+            location = urlparse.urljoin(current_url, location)
+            logger.info("primary-db: %s", location)
 
-            stream = GzipDecompress(connection.open_stream(
-                urlparse.urljoin(current_url, location)
-            ))
+            stream = GzipDecompress(connection.open_stream(location))
             nodes = etree.parse(stream)
 
         for pkg_tag in nodes.iterfind("./main:package", _namespaces):

@@ -130,7 +130,7 @@ class DebRepoDriver(RepoDriver):
             baseurl, reponame, self.arch
         )
         logger.info("loading packages from: %s", index_file)
-        with self.connections.acquire() as connection:
+        with self.connections.get() as connection:
             stream = GzipDecompress(connection.open_stream(index_file))
             pkg_iter = deb822.Packages.iter_paragraphs(stream)
             for dpkg in pkg_iter:

@@ -43,5 +43,5 @@ if __name__ == "__main__":
     test(
         "unresolved",
         ListUnresolved,
-        ["unresolved"] + sys.argv + ["-v", "-v", "--debug"]
+        ["unresolved"] + sys.argv[1:] + ["-v", "-v", "--debug"]
     )

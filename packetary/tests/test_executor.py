@@ -19,33 +19,45 @@ import mock
 from packetary.library import executor
 from packetary.tests import base
 
+import time
 
-@mock.patch("packetary.library.executor.logger")
+
 class TestExecutor(base.TestCase):
     def setUp(self):
         super(TestExecutor, self).setUp()
         self.executor = executor.Executor({"threads_count": 2})
+        self.results = []
 
+    def _on_complete(self, e):
+        if e is None:
+            self.results.append(e)
+        else:
+            self.results.append(str(e))
+
+    def _raise_value_error(self, *_):
+        raise ValueError("error")
+
+    @mock.patch("packetary.library.executor.logger")
     def test_execute(self, logger):
-        results = []
-
-        def on_complete(e):
-            results.append(e)
-
-        def raise_error(*_):
-            raise ValueError("error")
-
-        self.executor.execute(lambda: None, on_complete)
-        self.executor.execute(raise_error, on_complete)
-        self.executor.execute(lambda: None, raise_error)
+        self.executor.execute(lambda: time.sleep(0), self._on_complete)
+        self.executor.execute(self._raise_value_error, self._on_complete)
+        self.executor.execute(lambda: time.sleep(0), self._raise_value_error)
         self.executor.shutdown()
+        self.assertItemsEqual([None, 'error'], self.results)
         logger.exception.assert_called_with(
             "Exception in callback: %s", "error"
         )
 
-        self.assertEqual(2, len(results))
-        self.assertIs(None, results[0])
-        self.assertIsInstance(results[1], ValueError)
+    def _create_tasks_and_shutdown(self, wait):
+        self.executor.execute(lambda: time.sleep(0.5), self._on_complete)
+        self.executor.execute(lambda: time.sleep(0.5), self._on_complete)
+        self.executor.execute(self._raise_value_error, self._on_complete)
+        self.executor.shutdown(wait)
 
-    def test_shutdown(self, logger):
-        pass
+    def test_shutdown_with_wait(self):
+        self._create_tasks_and_shutdown(True)
+        self.assertItemsEqual([None, None, 'error'], self.results)
+
+    def test_shutdown_without_wait(self):
+        self._create_tasks_and_shutdown(False)
+        self.assertNotIn("error", self.results)
