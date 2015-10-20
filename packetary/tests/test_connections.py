@@ -15,7 +15,6 @@
 #    under the License.
 
 import mock
-import six
 import time
 
 from packetary.library import connections
@@ -178,7 +177,7 @@ class TestRetryHandler(base.TestCase):
         response.getcode.return_value = 200
         response.msg = "test"
         r = self.handler.http_response(request, response)
-        self.assertIsInstance(r, connections.ResumeableResponse)
+        self.assertIsInstance(r, connections.ResumeableStream)
         logger.debug.assert_called_with(
             "finish request: %s - %d (%s), duration - %d ms.",
             "/file/test", 200, "test", 10
@@ -222,7 +221,7 @@ class TestResumeableResponse(base.TestCase):
 
     def test_resume_read(self):
         self.request.offset = 0
-        response = connections.ResumeableResponse(
+        response = connections.ResumeableStream(
             self.request,
             self.stream,
             self.opener

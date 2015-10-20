@@ -37,9 +37,9 @@ class RetryableRequest(urllib_request.Request):
     start_time = 0
 
 
-class ResumeableResponse(BufferedStream):
+class ResumeableStream(BufferedStream):
     def __init__(self, request, response, opener):
-        super(ResumeableResponse, self).__init__(response)
+        super(ResumeableStream, self).__init__(response)
         self.request = request
         self.opener = opener
 
@@ -52,7 +52,7 @@ class ResumeableResponse(BufferedStream):
             except IOError as e:
                 response = self.opener.error(
                     self.request.get_type(), self.request,
-                    self.fileobj, 502, str(e), self.fileobj.info()
+                    self.fileobj, 502, six.text_type(e), self.fileobj.info()
                 )
                 self.fileobj = response.fileobj
 
@@ -75,7 +75,7 @@ class RetryHandler(urllib_request.BaseHandler):
         )
         if request.offset > 0 and response.getcode() != 206:
             raise RangeError("Server does not support ranges.")
-        return ResumeableResponse(request, response, self.parent)
+        return ResumeableStream(request, response, self.parent)
 
     def http_error(self, req, fp, code, msg, hdrs):
         if code >= 500 and req.retries > 0:
@@ -117,7 +117,7 @@ class Connection(object):
                 request.retries -= 1
                 logger.exception(
                     "Failed to open url: %s. retries left - %d.",
-                    str(e), request.retries
+                    six.text_type(e), request.retries
                 )
 
     @staticmethod

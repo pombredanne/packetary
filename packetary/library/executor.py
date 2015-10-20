@@ -31,7 +31,7 @@ def _callback(func):
         try:
             func(e)
         except Exception as e:
-            logger.exception("Exception in callback: %s", str(e))
+            logger.exception("Exception in callback: %s", six.text_type(e))
     return wrapper
 
 
@@ -112,6 +112,8 @@ class ExecutionScope(object):
         self.condition = threading.Condition(self.mutex)
 
     def __enter__(self):
+        self.errors = 0
+        self.counter = 0
         return self
 
     def __exit__(self, etype, *_):
@@ -132,11 +134,14 @@ class ExecutionScope(object):
 
     def on_complete(self, err=None):
         if err is not None:
-            logger.exception(str(err))
-            self.errors += 1
+            logger.exception("Task failed: %s", six.text_type(err))
+            delta = 1
+        else:
+            delta = 0
 
         self.condition.acquire()
         try:
+            self.errors += delta
             self.counter -= 1
             self.condition.notify_all()
         finally:
@@ -151,6 +156,7 @@ class ExecutionScope(object):
             logger.debug("%d: tasks left - 0.", id(self))
         finally:
             self.condition.release()
+
         if not ignore_errors and self.errors > 0:
             raise RuntimeError(
                 "Operations completed with errors. See log for more details."
