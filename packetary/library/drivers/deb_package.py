@@ -44,9 +44,9 @@ class DebPackage(Package):
 
     def __init__(self, dpkg, baseurl, suite, comp):
         self.dpkg = dpkg
-        self.baseurl = baseurl
         self.suite = suite
         self.comp = comp
+        self._baseurl = baseurl
         self._version = debian_support.Version(dpkg['version'])
         self._size = int(dpkg['size'])
 
@@ -75,8 +75,8 @@ class DebPackage(Package):
         return self.dpkg["Filename"]
 
     @property
-    def origin(self):
-        return self.baseurl
+    def baseurl(self):
+        return self._baseurl
 
     @property
     def requires(self):

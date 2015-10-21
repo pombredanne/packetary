@@ -214,7 +214,7 @@ class DebRepoDriver(RepoDriver):
                 yield baseurl, (suite, comp)
 
     def get_path(self, base, package):
-        baseurl = base or package.origin
+        baseurl = base or package.baseurl
         return "/".join((baseurl, package.filename))
 
     def load(self, baseurl, repo, consumer):

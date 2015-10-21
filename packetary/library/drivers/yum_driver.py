@@ -110,7 +110,7 @@ class YumRepoDriver(RepoDriver):
             yield url.rsplit("/", 1)
 
     def get_path(self, base, package):
-        baseurl = base or package.origin
+        baseurl = base or package.baseurl
         return "/".join((
             baseurl, package.reponame, self.arch, package.filename
         ))

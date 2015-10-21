@@ -57,7 +57,7 @@ class Repository(object):
         connections = self.context.connections
         offset = 0
         dst_path = self.driver.get_path(destination, package)
-        src_path = self.driver.get_path(package.origin, package)
+        src_path = self.driver.get_path(package.baseurl, package)
         try:
             stats = os.stat(dst_path)
             if stats.st_size == package.size:

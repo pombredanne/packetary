@@ -56,13 +56,13 @@ class RepoDriver(driver.RepoDriver):
             yield url, "test"
 
     def get_path(self, base, p):
-        return "/".join((base or p.origin, p.filename))
+        return "/".join((base or p.baseurl, p.filename))
 
     def create_index(self, destination):
         return self.index_writer
 
     def load(self, baseurl, reponame, consumer):
         if self.packages is None:
-            self.generate_packages()
+            self.generate_packages(baseurl=baseurl)
         for p in self.packages:
             consumer(p)

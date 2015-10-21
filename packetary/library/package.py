@@ -46,8 +46,8 @@ class Package(object):
 
     @property
     @abc.abstractmethod
-    def origin(self):
-        """The url of origin repository."""
+    def baseurl(self):
+        """The repository`s url."""
 
     @property
     @abc.abstractmethod

@@ -85,9 +85,9 @@ def _get_relations(tag, name):
 class YumPackage(Package):
     """Yum package."""
     def __init__(self, pkg_tag, baseurl, reponame):
-        self.baseurl = baseurl
         self.reponame = reponame
         self.repo = tuple(baseurl.rsplit("/", 3)[1:-1])
+        self._baseurl = baseurl
         self._name = _find(pkg_tag, "./main:name").text
         self._version = PackageVersion(
             _find(pkg_tag, "./main:version").attrib
@@ -120,7 +120,7 @@ class YumPackage(Package):
         return self._filename
 
     @property
-    def origin(self):
+    def baseurl(self):
         return self.baseurl
 
     @property

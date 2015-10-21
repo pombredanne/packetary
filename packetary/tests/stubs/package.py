@@ -32,7 +32,7 @@ class Package(package.Package):
         self.props.setdefault('size', 0)
         self.props.setdefault('checksum', (None, None))
         self.props.setdefault('filename', "test.pkg")
-        self.props.setdefault('origin', ".")
+        self.props.setdefault('baseurl', '.')
         self.props.setdefault('requires', [])
         self.props.setdefault('provides', [])
         self.props.setdefault('obsoletes', [])
@@ -57,8 +57,8 @@ class Package(package.Package):
         return self._get_property('filename')
 
     @property
-    def origin(self):
-        return self._get_property('origin')
+    def baseurl(self):
+        return self._get_property('baseurl')
 
     @property
     def checksum(self):
