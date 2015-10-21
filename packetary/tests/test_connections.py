@@ -51,7 +51,7 @@ class TestConnectionsPool(base.TestCase):
         })
         self.assertEqual(1, pool.free.qsize())
         with pool.get() as c:
-            self.assertEqual(2, c.retries)
+            self.assertEqual(2, c.retries_num)
             for h in c.opener.handlers:
                 if isinstance(h, connections.RetryHandler):
                     break
@@ -69,7 +69,7 @@ class TestConnection(base.TestCase):
         self.assertIsInstance(request, connections.RetryableRequest)
         self.assertEqual("file:///test/file", request.get_full_url())
         self.assertEqual(0, request.offset)
-        self.assertEqual(2, request.retries)
+        self.assertEqual(2, request.retries_left)
         request2 = self.connection.get_request("http://server/path", 100)
         self.assertEqual("http://server/path", request2.get_full_url())
         self.assertEqual(100, request2.offset)
@@ -79,7 +79,7 @@ class TestConnection(base.TestCase):
         self.assertEqual(1, self.connection.opener.open.call_count)
         args = self.connection.opener.open.call_args[0]
         self.assertIsInstance(args[0], connections.RetryableRequest)
-        self.assertEqual(2, args[0].retries)
+        self.assertEqual(2, args[0].retries_left)
 
     @mock.patch("packetary.library.connections.logger")
     def test_retries_on_io_error(self, logger):
@@ -198,7 +198,7 @@ class TestRetryHandler(base.TestCase):
     def test_error(self, logger):
         request = mock.MagicMock()
         request.get_full_url.return_value = "/test"
-        request.retries = 1
+        request.retries_left = 1
         self.handler.http_error(
             request, mock.MagicMock(), 500, "error", mock.MagicMock()
         )

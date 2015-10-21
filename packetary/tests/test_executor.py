@@ -66,15 +66,15 @@ class TestExecutor(base.TestCase):
 
 
 @mock.patch("packetary.library.executor.logger")
-class TestExecutionScope(base.TestCase):
+class TestAsynchronousSection(base.TestCase):
     def setUp(self):
-        super(TestExecutionScope, self).setUp()
+        super(TestAsynchronousSection, self).setUp()
         self.executor = executor.Executor({"threads_count": 2})
         self.results = []
 
     def test_isolation(self, _):
-        scope1 = executor.ExecutionScope(self.executor, 0)
-        scope2 = executor.ExecutionScope(self.executor, 0)
+        scope1 = executor.AsynchronousSection(self.executor, 0)
+        scope2 = executor.AsynchronousSection(self.executor, 0)
         event = threading.Event()
         scope1.execute(event.wait)
         scope2.execute(time.sleep, 0)
@@ -83,7 +83,7 @@ class TestExecutionScope(base.TestCase):
         scope1.wait()
 
     def test_ignore_errors(self, logger):
-        scope = executor.ExecutionScope(self.executor, 1)
+        scope = executor.AsynchronousSection(self.executor, 1)
         scope.execute(_raise_value_error)
         scope.execute(time.sleep, 0)
         scope.wait(ignore_errors=True)
@@ -91,7 +91,7 @@ class TestExecutionScope(base.TestCase):
         logger.exception.assert_called_with("Task failed: %s", "error")
 
     def test_fail_if_too_many_errors(self, _):
-        scope = executor.ExecutionScope(self.executor, 0)
+        scope = executor.AsynchronousSection(self.executor, 0)
         scope.execute(_raise_value_error)
         scope.wait(ignore_errors=True)
         with self.assertRaisesRegexp(RuntimeError, "Too many errors"):

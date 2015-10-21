@@ -26,6 +26,7 @@ logger = logging.getLogger(__package__)
 
 
 def _callback(func):
+    """Wraps callback to ensure that it does not raise exception."""
     @functools.wraps(func)
     def wrapper(e):
         try:
@@ -36,13 +37,18 @@ def _callback(func):
 
 
 class Executor(object):
-    """The download service, with concurrent downloads control."""
+    """Asynchronous tasks executor."""
+
+    default_threads_count = 1
+    default_queue_size = 100
 
     _stopper = object()
 
     def __init__(self, options):
-        threads_num = options.get('threads_count', 1)
-        queue_size = options.get('queue_size') or 100
+        threads_num = max(
+            options.get('threads_count', 0), self.default_threads_count
+        )
+        queue_size = options.get('queue_size') or self.default_queue_size
         self.tasks = six.moves.queue.Queue(maxsize=queue_size)
         self.threads = threads = []
         self._closed = False
@@ -56,13 +62,13 @@ class Executor(object):
             threads.append(t)
             threads_num -= 1
 
-    def execute(self, func, on_complete):
-        """Executes in thread-pool."""
+    def execute(self, task, on_complete):
+        """Executes task asynchronous."""
         if not self._closed:
-            self.tasks.put((func, _callback(on_complete)))
+            self.tasks.put((task, _callback(on_complete)))
 
     def shutdown(self, wait=True):
-        """Shutdowns thread-pool."""
+        """Shutdowns executor."""
         if self._closed:
             return
         logger.debug("Shutting down executor...")
@@ -102,10 +108,20 @@ class Executor(object):
                 self.tasks.task_done()
 
 
-class ExecutionScope(object):
-    def __init__(self, executor, ignore_errors):
+class AsynchronousSection(object):
+    """Allows calling function asynchronously with waiting on exit."""
+
+    poll_timeout = 5
+
+    def __init__(self, executor, ignore_errors_num):
+        """Initialises.
+
+        :param executor: the executor instance
+        :param ignore_errors_num:
+               number of errors which does not stop the execution
+        """
         self.executor = executor
-        self.ignore_errors = ignore_errors
+        self.ignore_errors_num = ignore_errors_num
         self.errors = 0
         self.counter = 0
         self.mutex = threading.Lock()
@@ -120,7 +136,9 @@ class ExecutionScope(object):
         self.wait(etype is not None)
 
     def execute(self, func, *args, **kwargs):
-        if 0 <= self.ignore_errors < self.errors:
+        """Calls function asynchronously."""
+
+        if 0 <= self.ignore_errors_num < self.errors:
             raise RuntimeError("Too many errors.")
 
         self.executor.execute(
@@ -133,6 +151,8 @@ class ExecutionScope(object):
             self.mutex.release()
 
     def on_complete(self, err=None):
+        """Callback to catch task completion."""
+
         if err is not None:
             logger.exception("Task failed: %s", six.text_type(err))
             delta = 1
@@ -148,11 +168,15 @@ class ExecutionScope(object):
             self.condition.release()
 
     def wait(self, ignore_errors=False):
+        """Waits until all tasks will be completed.
+
+        Do not use directly, will called from context manager.
+        """
         self.condition.acquire()
         try:
             while self.counter > 0:
                 logger.debug("%d: tasks left - %d.", id(self), self.counter)
-                self.condition.wait(5)
+                self.condition.wait(self.poll_timeout)
             logger.debug("%d: tasks left - 0.", id(self))
         finally:
             self.condition.release()

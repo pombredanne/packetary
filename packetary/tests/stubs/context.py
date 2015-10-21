@@ -30,7 +30,7 @@ class Context(object):
     def __exit__(self, *_):
         self.shutdown()
 
-    def create_scope(self, ignore_errors=None):
+    def async_section(self, ignore_errors_num=None):
         return self.executor
 
     def shutdown(self, wait=True):

@@ -33,7 +33,7 @@ class Application(app.App):
                                             argparse_kwargs=argparse_kwargs)
 
         parser.add_argument(
-            "--ignore-errors",
+            "--ignore-errors-count",
             type=int,
             default=2,
             metavar="NUMBER",

@@ -15,7 +15,7 @@
 #    under the License.
 
 from packetary.library.connections import ConnectionsPool
-from packetary.library.executor import ExecutionScope
+from packetary.library.executor import AsynchronousSection
 from packetary.library.executor import Executor
 
 
@@ -24,7 +24,7 @@ class Context(object):
     def __init__(self, options):
         self.executor = Executor(options)
         self.connections = ConnectionsPool(options)
-        self.ignore_errors = options.get('ignore_errors', 0)
+        self.ignore_errors_num = options.get('ignore_errors_count', 0)
 
     def __enter__(self):
         return self
@@ -32,12 +32,12 @@ class Context(object):
     def __exit__(self, *_):
         self.shutdown()
 
-    def create_scope(self, ignore_errors=None):
+    def async_section(self, ignore_errors_num=None):
         """Gets the execution scope"""
-        if ignore_errors is None:
-            ignore_errors = self.ignore_errors
+        if ignore_errors_num is None:
+            ignore_errors_num = self.ignore_errors_num
 
-        return ExecutionScope(self.executor, ignore_errors)
+        return AsynchronousSection(self.executor, ignore_errors_num)
 
     def shutdown(self, wait=True):
         """Stops the execution."""

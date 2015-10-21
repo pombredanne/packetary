@@ -29,8 +29,9 @@ class TestChecksum(base.TestCase):
             checksum.sha256: "66663af9c7aa341431a8ee2ff27b72"
                              "abd06c9218f517bb6fef948e4803c19e03"
         }
-        for algo, expected in six.iteritems(checksums):
-            stream.seek(0)
-            self.assertEqual(
-                expected, algo(stream)
-            )
+        for chunksize in (8, 256):
+            for algo, expected in six.iteritems(checksums):
+                stream.seek(0)
+                self.assertEqual(
+                    expected, algo(stream, chunksize)
+                )

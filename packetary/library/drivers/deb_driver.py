@@ -46,6 +46,8 @@ _CHECK_SUMS = [
     ("SHA256", checksum.sha256)
 ]
 
+_DEFAULT_ORIGIN = "Unknown"
+
 
 class DebIndexWriter(IndexWriter):
     def __init__(self, driver, destination):
@@ -61,7 +63,7 @@ class DebIndexWriter(IndexWriter):
 
     def flush(self, keep_existing=True):
         suites = set()
-        self.origin = self.origin or "Ubuntu"
+        self.origin = self.origin or _DEFAULT_ORIGIN
         for repo, packages in six.iteritems(self.index):
             self._rebuild_index(repo, packages, keep_existing)
             suites.add(repo[0])
@@ -185,7 +187,7 @@ class DebIndexWriter(IndexWriter):
 
 
 class Driver(RepoDriver):
-    """Driver for debian repositories."""
+    """Driver for deb repositories."""
 
     def __init__(self, context, arch):
         self.connections = context.connections
@@ -200,8 +202,8 @@ class Driver(RepoDriver):
                 baseurl, suite, comps = url.split(" ", 2)
             except ValueError:
                 raise ValueError(
-                    "invalid url: {0}\n"
-                    "expected: baseurl suite component[ component]"
+                    "Invalid url: {0}\n"
+                    "Expected: baseurl suite component[ component]"
                     .format(url)
                 )
 

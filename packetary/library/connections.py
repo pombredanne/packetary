@@ -33,7 +33,7 @@ class RangeError(urllib_error.URLError):
 
 class RetryableRequest(urllib_request.Request):
     offset = 0
-    retries = 1
+    retries_left = 1
     start_time = 0
 
 
@@ -78,11 +78,11 @@ class RetryHandler(urllib_request.BaseHandler):
         return ResumeableStream(request, response, self.parent)
 
     def http_error(self, req, fp, code, msg, hdrs):
-        if code >= 500 and req.retries > 0:
-            req.retries -= 1
+        if code >= 500 and req.retries_left > 0:
+            req.retries_left -= 1
             logger.warning(
                 "fail request: %s - %d(%s), retries left - %d.",
-                req.get_full_url(), code, msg, req.retries
+                req.get_full_url(), code, msg, req.retries_left
             )
             return self.parent.open(req)
 
@@ -91,20 +91,26 @@ class RetryHandler(urllib_request.BaseHandler):
 
 
 class Connection(object):
-    def __init__(self, opener, retries):
+    def __init__(self, opener, retries_num):
         self.opener = opener
-        self.retries = retries
+        self.retries_num = retries_num
 
     def get_request(self, url, offset=0):
         if url.startswith("/"):
             url = "file://" + url
 
         request = RetryableRequest(url)
-        request.retries = self.retries
+        request.retries_left = self.retries_num
         request.offset = offset
         return request
 
     def open_stream(self, url, offset=0):
+        """Opens remote file for streaming.
+
+        :param url: the remote file`s url
+        :param offset: the number of bytes from begin, that will be skipped
+        """
+
         request = self.get_request(url, offset)
         while 1:
             try:
@@ -112,35 +118,22 @@ class Connection(object):
             except (RangeError, urllib_error.HTTPError):
                 raise
             except IOError as e:
-                if request.retries <= 0:
+                if request.retries_left <= 0:
                     raise
-                request.retries -= 1
+                request.retries_left -= 1
                 logger.exception(
                     "Failed to open url: %s. retries left - %d.",
-                    six.text_type(e), request.retries
+                    six.text_type(e), request.retries_left
                 )
 
-    @staticmethod
-    def _ensure_dir_exists(dst):
-        target_dir = os.path.dirname(dst)
-        try:
-            os.makedirs(target_dir)
-        except OSError as e:
-            if e.errno != 17:
-                raise
-
-    def _copy_stream(self, fd, url, offset):
-        source = self.open_stream(url, offset)
-        os.ftruncate(fd, offset)
-        os.lseek(fd, offset, os.SEEK_SET)
-        chunk_size = 16 * 1024
-        while 1:
-            chunk = source.read(chunk_size)
-            if not chunk:
-                break
-            os.write(fd, chunk)
-
     def retrieve(self, url, filename, offset=0):
+        """Downloads remote file.
+
+        :param url: the remote file`s url
+        :param filename: the file`s name, that includes path on local fs
+        :param offset: the number of bytes from begin, that will be skipped
+        """
+
         self._ensure_dir_exists(filename)
         fd = os.open(filename, os.O_CREAT | os.O_WRONLY)
         try:
@@ -156,6 +149,34 @@ class Connection(object):
             os.fsync(fd)
             os.close(fd)
 
+    @staticmethod
+    def _ensure_dir_exists(dst):
+        """Checks that directory exists and creates otherwise."""
+        target_dir = os.path.dirname(dst)
+        try:
+            os.makedirs(target_dir)
+        except OSError as e:
+            if e.errno != 17:
+                raise
+
+    def _copy_stream(self, fd, url, offset):
+        """Copies remote file to local.
+
+        :param fd: the file`s descriptor
+        :param url: the remote file`s url
+        :param offset: the number of bytes from begin, that will be skipped
+        """
+
+        source = self.open_stream(url, offset)
+        os.ftruncate(fd, offset)
+        os.lseek(fd, offset, os.SEEK_SET)
+        chunk_size = 16 * 1024
+        while 1:
+            chunk = source.read(chunk_size)
+            if not chunk:
+                break
+            os.write(fd, chunk)
+
 
 class ConnectionContext(object):
     def __init__(self, connection, on_exit):
@@ -170,6 +191,10 @@ class ConnectionContext(object):
 
 
 class ConnectionsPool(object):
+    """Controls the number of simultaneously opened connections."""
+
+    min_connections_count = 1
+
     def __init__(self, options):
         retries = options.get("retries_count", 0)
         http_proxy = options.get("connection_proxy")
@@ -185,7 +210,9 @@ class ConnectionsPool(object):
             urllib_request.ProxyHandler(proxies)
         )
 
-        limit = max(options.get("connection_count", 1), 1)
+        limit = max(
+            options.get("connection_count", 0), self.min_connections_count
+        )
         connections = six.moves.queue.Queue()
         while limit > 0:
             connections.put(Connection(opener, retries))
@@ -194,9 +221,14 @@ class ConnectionsPool(object):
         self.free = connections
 
     def get(self, timeout=None):
+        """Gets the free connection.
+
+        Blocks in case if there is no free connections.
+        """
         return ConnectionContext(
             self.free.get(timeout=timeout), self._release
         )
 
     def _release(self, connection):
+        """Puts back connection to free connections."""
         self.free.put(connection)

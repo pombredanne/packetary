@@ -38,7 +38,7 @@ class Repository(object):
         if not isinstance(urls, (list, tuple)):
             urls = [urls]
 
-        with self.context.create_scope() as scope:
+        with self.context.async_section() as scope:
             for url, repo in self.driver.parse_urls(urls):
                 scope.execute(self.driver.load, url, repo, consumer)
 
@@ -46,7 +46,7 @@ class Repository(object):
         """Copies packages to specified directory."""
 
         index_writer = self.driver.create_index(destination)
-        with self.context.create_scope() as scope:
+        with self.context.async_section() as scope:
             for package in producer:
                 scope.execute(self._copy_package, package, destination)
                 index_writer.add(package)
