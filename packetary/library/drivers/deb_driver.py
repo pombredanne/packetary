@@ -184,7 +184,9 @@ class DebIndexWriter(IndexWriter):
             return n.startswith("Release") or n.startswith("Packages")
 
 
-class DebRepoDriver(RepoDriver):
+class Driver(RepoDriver):
+    """Driver for debian repositories."""
+
     def __init__(self, context, arch):
         self.connections = context.connections
         self.arch = _ARCH_MAPPING[arch]

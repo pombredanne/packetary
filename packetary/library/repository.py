@@ -17,20 +17,20 @@
 import logging
 import os
 
-from packetary.library.drivers import drivers_kind
+from packetary.library import drivers as _drivers
 
 
 logger = logging.getLogger(__package__)
 
 
 class Repository(object):
-    def __init__(self, context, kind, arch):
+    def __init__(self, context, kind, arch, drivers=_drivers):
         self.context = context
         try:
-            self.driver = drivers_kind[kind](context, arch)
-        except KeyError:
+            self.driver = getattr(drivers, kind)(context, arch)
+        except AttributeError:
             raise NotImplementedError(
-                "unsupported repository: %s" % kind
+                "Unsupported repository: {0}".format(kind)
             )
 
     def load_packages(self, urls, consumer):

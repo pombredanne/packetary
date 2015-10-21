@@ -14,23 +14,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-supported_drivers = ["deb", "yum"]
+import mock
 
-__all__ = supported_drivers
-
-def _lazy_loader(name):
-    """Loads driver on demand."""
-
-    mod_name = ".".join((__name__, name + "_driver"))
-
-    def loader(context, arch):
-        try:
-            module = __import__(mod_name, fromlist=["Driver"])
-        except ImportError:
-            raise AttributeError(name)
-        return getattr(module, "Driver")(context, arch)
-    return loader
+from packetary.tests.stubs.executor import Executor
 
 
-for d in supported_drivers:
-    locals()[d] = _lazy_loader(d)
+class Context(object):
+    def __init__(self):
+        self.executor = Executor()
+        self.connections = mock.MagicMock()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.shutdown()
+
+    def create_scope(self, ignore_errors=None):
+        return self.executor
+
+    def shutdown(self, wait=True):
+        pass

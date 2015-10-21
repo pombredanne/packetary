@@ -93,8 +93,8 @@ class YumIndexWriter(IndexWriter):
             logger.info("File %s was removed.", p.filename)
 
 
-class YumRepoDriver(RepoDriver):
-    """Yum repositories implementation"""
+class Driver(RepoDriver):
+    """Driver for yum repositories."""
 
     def __init__(self, context, arch):
         self.connections = context.connections

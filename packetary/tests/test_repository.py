@@ -19,6 +19,7 @@ import six
 
 from packetary.library.repository import Repository
 from packetary.tests import base
+from packetary.tests.stubs.context import Context
 from packetary.tests.stubs.driver import RepoDriver
 
 
@@ -26,17 +27,12 @@ class TestRepository(base.TestCase):
     @classmethod
     def setUpClass(cls):
         super(TestRepository, cls).setUpClass()
-        context = mock.MagicMock()
-        context.create_scope().__enter__().execute = \
-            lambda m, *args, **kwargs: m(*args, **kwargs)
-
-        with mock.patch("packetary.library.repository.drivers_kind",
-                        new=dict(stub=RepoDriver)):
-            cls.repo = Repository(
-                context,
-                "stub",
-                "x86_64"
-            )
+        cls.repo = Repository(
+            Context(),
+            "stub",
+            "x86_64",
+            drivers=mock.MagicMock(stub=RepoDriver)
+        )
 
     def test_load_packages(self):
         url = "url1"
