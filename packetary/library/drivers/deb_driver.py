@@ -24,11 +24,11 @@ import logging
 import os
 import six
 
+from packetary.library.checksum import multi_checksum
 from packetary.library.driver import IndexWriter
 from packetary.library.driver import RepoDriver
 from packetary.library.drivers.deb_package import DebPackage
 from packetary.library.streams import GzipDecompress
-from packetary.library.streams import StreamTransform
 
 
 logger = logging.getLogger(__package__)
@@ -40,94 +40,23 @@ _ARCH_MAPPING = {
 }
 
 _META_FILES_WEIGHT = {
-    "Packages.gz": 10,
-    "Release": 20,
+    "Packages": 1,
+    "Release": 2,
+    "Packages.gz": 3,
 }
 
 _DEFAULT_ORIGIN = "Unknown"
 
 _SIZE_ALIGNMENT = 16
 
+_CHECKSUM_ALGO = ['MD5Sum', 'SHA1', 'SHA256']
 
-class ChecksumCollector(object):
-    def __init__(self):
-        self.processors = {
-            "MD5Sum": hashlib.md5(),
-            "SHA1": hashlib.sha1(),
-            "SHA256": hashlib.sha256(),
-        }
-
-    def update(self, chunk):
-        for p in six.itervalues(self.processors):
-            p.update(chunk)
-
-    def get_result(self):
-        return (
-            (k, v.hexdigest()) for k, v in six.iteritems(self.processors)
-        )
-
-
-class GzipMetaCollector(GzipDecompress):
-    def __init__(self, fileobj, filename, weigth):
-        super(GzipMetaCollector, self).__init__(fileobj)
-        self.filename = filename
-        self.weigth = weigth
-        self.original = ChecksumCollector()
-        self.unarchived = ChecksumCollector()
-        self.original_size = 0
-        self.unarchived_size = 0
-
-    def transform(self, chunk):
-        self.original.update(chunk)
-        self.original_size += len(chunk)
-        chunk = super(GzipMetaCollector, self).transform(chunk)
-        self.unarchived.update(chunk)
-        self.unarchived_size += len(chunk)
-        return chunk
-
-    def dump(self, output):
-        # cat .gz
-        filename = self.filename[:-3]
-        size = _format_size(self.unarchived_size)
-        for k, v in self.unarchived.get_result():
-            output[k].append((v, size, filename, self.weigth - 1))
-
-        filename = self.filename
-        size = _format_size(self.original_size)
-        for k, v in self.original.get_result():
-            output[k].append((v, size, filename, self.weigth))
-
-
-class FileMetaCollector(StreamTransform):
-    def __init__(self, fileobj, filename, weight):
-        super(FileMetaCollector, self).__init__(fileobj)
-        self.filename = filename
-        self.weight = weight
-        self.meta = ChecksumCollector()
-        self.file_size = 0
-
-    def transform(self, chunk):
-        self.meta.update(chunk)
-        self.file_size += len(chunk)
-        return chunk
-
-    def dump(self, collection):
-        filename = self.filename
-        size = _format_size(self.file_size)
-        for k, v in self.meta.get_result():
-            collection[k].append((v, size, filename, self.weight))
+_checksum_collector = multi_checksum('md5', 'sha1', 'sha256')
 
 
 def _format_size(size):
     size = six.text_type(size)
     return (" " * (_SIZE_ALIGNMENT - len(size))) + size
-
-
-def _traverse_stream(stream, chunksize=16 * 1024):
-    while True:
-        chunk = stream.read(chunksize)
-        if not chunk:
-            break
 
 
 class DebIndexWriter(IndexWriter):
@@ -156,9 +85,10 @@ class DebIndexWriter(IndexWriter):
             self.destination, "dists", repo[0], repo[1],
             "binary-" + self.driver.arch
         )
-        index_file = os.path.join(path, "Packages.gz")
+
+        index_file = os.path.join(path, "Packages")
+        index_gz = os.path.join(path, "Packages.gz")
         logger.info("the index file: %s.", index_file)
-        tmp = os.path.join(path, "Packages.tmp.gz")
         dirty_files = set()
         if keep_existing:
             on_existing_package = lambda x: packages.insert(p, None)
@@ -167,20 +97,22 @@ class DebIndexWriter(IndexWriter):
             on_existing_package = lambda x: dirty_files.add(x.filename)
             handler = lambda x: dirty_files.discard(x.filename)
 
-        if os.path.exists(index_file):
-            logger.info("process existing index: %s", index_file)
+        if os.path.exists(index_gz):
+            logger.info("process existing index: %s", index_gz)
             self.driver.load(self.destination, repo, on_existing_package)
 
         if not os.path.exists(path):
             os.makedirs(path)
 
-        with closing(gzip.open(tmp, "wb")) as index:
-            for p in packages.keys():
-                p.dpkg.dump(fd=index)
-                index.write(b"\n")
-                handler(p)
+        with closing(open(index_file, "wb")) as index:
+            with closing(gzip.open(index_gz, "wb")) as index_gz:
+                for p in packages.keys():
+                    p.dpkg.dump(fd=index)
+                    p.dpkg.dump(fd=index_gz)
+                    index.write(b"\n")
+                    index_gz.write(b"\n")
+                    handler(p)
 
-        os.rename(tmp, index_file)
         for f in dirty_files:
             os.remove(os.path.join(self.destination, f))
             logger.info("File %s was removed.", f)
@@ -237,29 +169,25 @@ class DebIndexWriter(IndexWriter):
     @staticmethod
     def _dump_files(meta, suite_dir, components):
         """Dumps files meta information."""
-        meta_of_files = defaultdict(list)
+        index = defaultdict(list)
         for d in components:
             comp_path = os.path.join(suite_dir, d)
             for root, dirs, files in os.walk(comp_path):
                 for f in six.moves.filter(_META_FILES_WEIGHT.__contains__, files):
                     filepath = os.path.join(root, f)
-                    with closing(open(filepath, "rb")) as fobj:
-                        if filepath.endswith(".gz"):
-                            processor_cls = GzipMetaCollector
-                        else:
-                            processor_cls = FileMetaCollector
-                        processor = processor_cls(
-                            fobj,
-                            filepath[len(suite_dir) + 1:],
-                            _META_FILES_WEIGHT[f]
-                        )
-                        _traverse_stream(processor)
-                        processor.dump(meta_of_files)
+                    with closing(open(filepath, "rb")) as stream:
+                        size = os.fstat(stream.fileno()).st_size
+                        checksum = _checksum_collector(stream)
+                        for n, h in six.moves.zip(_CHECKSUM_ALGO, checksum):
+                            index[n].append((
+                                h,
+                                _format_size(size),
+                                filepath[len(suite_dir) + 1:],
+                                _META_FILES_WEIGHT[f]
+                            ))
 
-        meta_of_files = sorted(
-            six.iteritems(meta_of_files), key=lambda x: x[0]
-        )
-        for algo_name, files in meta_of_files:
+        index = sorted(six.iteritems(index), key=lambda x: x[0])
+        for algo_name, files in index:
             meta.write(":".join((algo_name, "\n")))
             files = sorted(files, key=lambda x: x[-1])
             for checksum, size, filepath, _ in files:

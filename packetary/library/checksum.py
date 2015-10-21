@@ -38,3 +38,17 @@ md5 = _checksum(hashlib.md5)
 sha1 = _checksum(hashlib.sha1)
 
 sha256 = _checksum(hashlib.sha256)
+
+
+def multi_checksum(*algorithms):
+    """Calculate several checksum at one time."""
+    def calculate(stream, chunksize=16 * 1024):
+        methods = [getattr(hashlib, algo)() for algo in algorithms]
+        while True:
+            chunk = stream.read(chunksize)
+            if not chunk:
+                break
+            for m in methods:
+                m.update(chunk)
+        return [x.hexdigest() for x in methods]
+    return calculate

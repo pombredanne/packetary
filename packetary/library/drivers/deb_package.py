@@ -80,7 +80,9 @@ class DebPackage(Package):
 
     @property
     def requires(self):
-        return self._get_relations('depends')
+        requires = self._get_relations('depends')
+        requires.extend(self._get_relations('pre-depends'))
+        return requires
 
     @property
     def provides(self):
