@@ -40,8 +40,8 @@ _ARCH_MAPPING = {
 }
 
 _META_FILES_WEIGHT = {
-    "Release": 0,
     "Packages.gz": 10,
+    "Release": 20,
 }
 
 _DEFAULT_ORIGIN = "Unknown"

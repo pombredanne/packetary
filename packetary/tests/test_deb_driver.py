@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import with_statement
+
 import mock
 import os
 
@@ -47,8 +49,18 @@ class TestDebDriver(base.TestCase):
             self.driver.get_path(None, package)
         )
 
-    def test_load(self):
-        pass
+    @mock.patch("packetary.library.drivers.deb_driver")
+    def test_load(self, logger):
+        packages = []
+        # connections = self.driver.connections
+        # with open(PACKAGES_GZ, "rb") as stream:
+        #     connections.open_stream.return_value = stream
+        #     self.driver.load("http://host", ("trusty", "main"), packages.append)
+
+        #open_stream.assert_called_once_with("")
+        # asserts
+
+
 #         suite, comp = repo
 #         index_file = "{0}/dists/{1}/{2}/binary-{3}/Packages.gz".format(
 #             baseurl, suite, comp, self.arch
