@@ -45,7 +45,21 @@ class TestDebDriver(base.TestCase):
         )
 
     def test_load(self):
-        pass
+#         suite, comp = repo
+#         index_file = "{0}/dists/{1}/{2}/binary-{3}/Packages.gz".format(
+#             baseurl, suite, comp, self.arch
+#         )
+#         logger.info("loading packages from: %s", index_file)
+#         with self.connections.get() as connection:
+#             stream = GzipDecompress(connection.open_stream(index_file))
+#             pkg_iter = deb822.Packages.iter_paragraphs(stream)
+#             for dpkg in pkg_iter:
+#                 consumer(DebPackage(dpkg, baseurl, suite, comp))
+#
+#         logger.info(
+#             "packages from %s has been loaded successfully.", index_file
+#         )
+
 
     def test_parse_urls(self):
         self.assertItemsEqual(

@@ -39,6 +39,11 @@ _ARCH_MAPPING = {
     'x86_64': 'amd64',
 }
 
+_META_FILES_WEIGHT = {
+    "Release": 0,
+    "Packages.gz": 10,
+}
+
 _DEFAULT_ORIGIN = "Unknown"
 
 _SIZE_ALIGNMENT = 16
@@ -63,9 +68,10 @@ class ChecksumProcessor(object):
 
 
 class GzipMetaCollector(GzipDecompress):
-    def __init__(self, fileobj, filename):
+    def __init__(self, fileobj, filename, weigth):
         super(GzipMetaCollector, self).__init__(fileobj)
         self.filename = filename
+        self.weigth = weigth
         self.original = ChecksumProcessor()
         self.unarchived = ChecksumProcessor()
         self.original_size = 0
@@ -84,19 +90,20 @@ class GzipMetaCollector(GzipDecompress):
         filename = self.filename[:-3]
         size = _format_size(self.unarchived_size)
         for k, v in self.unarchived.get_result():
-            output[k].append((v, size, filename))
+            output[k].append((v, size, filename, self.weigth - 1))
 
         filename = self.filename
         size = _format_size(self.original_size)
         for k, v in self.original.get_result():
-            output[k].append((v, size, filename))
+            output[k].append((v, size, filename, self.weigth))
 
 
 
 class FileMetaCollector(StreamTransform):
-    def __init__(self, fileobj, filename):
+    def __init__(self, fileobj, filename, weight):
         super(FileMetaCollector, self).__init__(fileobj)
         self.filename = filename
+        self.weight = weight
         self.meta = ChecksumProcessor()
         self.file_size = 0
 
@@ -109,7 +116,7 @@ class FileMetaCollector(StreamTransform):
         filename = self.filename
         size = _format_size(self.file_size)
         for k, v in self.meta.get_result():
-            collection[k].append((v, size, filename))
+            collection[k].append((v, size, filename, self.weight))
 
 
 def _format_size(size):
@@ -243,15 +250,20 @@ class DebIndexWriter(IndexWriter):
                         else:
                             processor_cls = FileMetaCollector
                         processor = processor_cls(
-                            fobj, filepath[len(suite_dir) + 1:]
+                            fobj,
+                            filepath[len(suite_dir) + 1:],
+                            _META_FILES_WEIGHT[f]
                         )
                         _traverse_stream(processor)
                         processor.dump(meta_of_files)
 
-        meta_of_files = sorted(six.iteritems(meta_of_files), key=lambda x: x[0])
+        meta_of_files = sorted(
+            six.iteritems(meta_of_files), key=lambda x: x[0]
+        )
         for algo_name, files in meta_of_files:
             meta.write(":".join((algo_name, "\n")))
-            for checksum, size, filepath in files:
+            files = sorted(files, key=lambda x: x[-1])
+            for checksum, size, filepath, _ in files:
                 meta.write(" ".join((checksum, size, filepath)))
                 meta.write("\n")
 
@@ -262,7 +274,7 @@ class DebIndexWriter(IndexWriter):
 
     @staticmethod
     def _is_meta_file(n):
-        return n.startswith("Release") or n.startswith("Packages.gz")
+        return n in _META_FILES_WEIGHT
 
 
 class Driver(RepoDriver):
