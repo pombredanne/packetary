@@ -90,7 +90,15 @@ class BufferedStream(object):
         return self.readlines()
 
 
-class GzipDecompress(BufferedStream):
+class StreamTransform(BufferedStream):
+    def _read(self, chunksize):
+        return self.transform(self.fileobj.read(chunksize))
+
+    def transform(self, chunk):
+        return chunk
+
+
+class GzipDecompress(StreamTransform):
     """The decompress stream."""
 
     def __init__(self, fileobj):
@@ -100,8 +108,7 @@ class GzipDecompress(BufferedStream):
         # This works on cpython and pypy, but not jython.
         self.decompress = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
-    def _read(self, chunksize):
-        chunk = self.fileobj.read(chunksize)
-        if not chunk:
-            return self.decompress.flush()
-        return self.decompress.decompress(chunk)
+    def transform(self, chunk):
+        if chunk:
+            return self.decompress.decompress(chunk)
+        return self.decompress.flush()

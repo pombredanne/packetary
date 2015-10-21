@@ -19,10 +19,10 @@ import hashlib
 
 
 def _checksum(method):
-    """Gets the function to calculate checksum of stream with method."""
+    """Makes function to calculate checksum for stream."""
 
     @functools.wraps(method)
-    def calc(stream, chunksize=16 * 1024):
+    def calculate(stream, chunksize=16 * 1024):
         s = method()
         while True:
             chunk = stream.read(chunksize)
@@ -30,7 +30,7 @@ def _checksum(method):
                 break
             s.update(chunk)
         return s.hexdigest()
-    return calc
+    return calculate
 
 
 md5 = _checksum(hashlib.md5)

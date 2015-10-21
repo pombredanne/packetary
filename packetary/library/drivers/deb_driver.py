@@ -18,16 +18,17 @@ from contextlib import closing
 from datetime import datetime
 from debian import deb822
 import fcntl
+import hashlib
 import gzip
 import logging
 import os
 import six
 
-from packetary.library import checksum
 from packetary.library.driver import IndexWriter
 from packetary.library.driver import RepoDriver
 from packetary.library.drivers.deb_package import DebPackage
 from packetary.library.streams import GzipDecompress
+from packetary.library.streams import StreamTransform
 
 
 logger = logging.getLogger(__package__)
@@ -38,15 +39,87 @@ _ARCH_MAPPING = {
     'x86_64': 'amd64',
 }
 
-_SPACE_COUNT_IN_META = 17
-
-_CHECK_SUMS = [
-    ("MD5Sum", checksum.md5),
-    ("SHA1", checksum.sha1),
-    ("SHA256", checksum.sha256)
-]
-
 _DEFAULT_ORIGIN = "Unknown"
+
+_SIZE_ALIGNMENT = 16
+
+
+class ChecksumProcessor(object):
+    def __init__(self):
+        self.processors = {
+            "MD5Sum": hashlib.md5(),
+            "SHA1": hashlib.sha1(),
+            "SHA256": hashlib.sha256(),
+        }
+
+    def update(self, chunk):
+        for p in six.itervalues(self.processors):
+            p.update(chunk)
+
+    def get_result(self):
+        return (
+            (k, v.hexdigest()) for k, v in six.iteritems(self.processors)
+        )
+
+
+class GzipMetaCollector(GzipDecompress):
+    def __init__(self, fileobj, filename):
+        super(GzipMetaCollector, self).__init__(fileobj)
+        self.filename = filename
+        self.original = ChecksumProcessor()
+        self.unarchived = ChecksumProcessor()
+        self.original_size = 0
+        self.unarchived_size = 0
+
+    def transform(self, chunk):
+        self.original.update(chunk)
+        self.original_size += len(chunk)
+        chunk = super(GzipMetaCollector, self).transform(chunk)
+        self.unarchived.update(chunk)
+        self.unarchived_size += len(chunk)
+        return chunk
+
+    def dump(self, output):
+        filename = self.filename
+        size = _format_size(self.original_size)
+        for k, v in self.original.get_result():
+            output[k].append((v, size, filename))
+        # cat .gz
+        filename = filename[:-3]
+        size = _format_size(self.unarchived_size)
+        for k, v in self.unarchived.get_result():
+            output[k].append((v, size, filename))
+
+
+class FileMetaCollector(StreamTransform):
+    def __init__(self, fileobj, filename):
+        super(FileMetaCollector, self).__init__(fileobj)
+        self.filename = filename
+        self.meta = ChecksumProcessor()
+        self.file_size = 0
+
+    def transform(self, chunk):
+        self.meta.update(chunk)
+        self.file_size += len(chunk)
+        return chunk
+
+    def dump(self, collection):
+        filename = self.filename
+        size = _format_size(self.file_size)
+        for k, v in self.meta.get_result():
+            collection[k].append((v, size, filename))
+
+
+def _format_size(size):
+    size = six.text_type(size)
+    return (" " * (_SIZE_ALIGNMENT - len(size))) + size
+
+
+def _traverse_stream(stream, chunksize=16 * 1024):
+    while True:
+        chunk = stream.read(chunksize)
+        if not chunk:
+            break
 
 
 class DebIndexWriter(IndexWriter):
@@ -156,25 +229,29 @@ class DebIndexWriter(IndexWriter):
     @staticmethod
     def _dump_files(meta, suite_dir, components):
         """Dumps files meta information."""
+        meta_of_files = defaultdict(list)
         for d in components:
             comp_path = os.path.join(suite_dir, d)
-            for hash_name, hash_method in _CHECK_SUMS:
-                meta.write(":".join((hash_name, "\n")))
-                for root, dirs, files in os.walk(comp_path):
-                    for f in files:
-                        filepath = os.path.join(root, f)
-                        with closing(open(filepath, "rb")) as fobj:
-                            meta.write(hash_method(fobj))
-                            size_str = six.text_type(
-                                os.fstat(fobj.fileno()).st_size
-                            )
-                            meta.write(
-                                " " * (_SPACE_COUNT_IN_META - len(size_str))
-                            )
-                            meta.write(size_str)
-                            meta.write(" ")
-                            meta.write(filepath[len(suite_dir) + 1:])
-                            meta.write("\n")
+            for root, dirs, files in os.walk(comp_path):
+                for f in files:
+                    filepath = os.path.join(root, f)
+                    with closing(open(filepath, "rb")) as fobj:
+                        if filepath.endswith(".gz"):
+                            processor_cls = GzipMetaCollector
+                        else:
+                            processor_cls = FileMetaCollector
+                        processor = processor_cls(
+                            fobj, filepath[len(suite_dir) + 1:]
+                        )
+                        _traverse_stream(processor)
+                        processor.dump(meta_of_files)
+
+        meta_of_files = sorted(six.iteritems(meta_of_files), key=lambda x: x[0])
+        for algo_name, files in meta_of_files:
+            meta.write(":".join((algo_name, "\n")))
+            for checksum, size, filepath in files:
+                meta.write(" ".join((checksum, size, filepath)))
+                meta.write("\n")
 
     @staticmethod
     def _dump_meta(stream, meta):
@@ -183,7 +260,7 @@ class DebIndexWriter(IndexWriter):
 
     @staticmethod
     def _is_meta_file(n):
-            return n.startswith("Release") or n.startswith("Packages")
+            return n.startswith("Release") or n.startswith("Packages.gz")
 
 
 class Driver(RepoDriver):
