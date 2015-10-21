@@ -29,7 +29,7 @@ class TestBufferedStream(base.TestCase):
         )
 
     def test_read(self):
-        self.stream.chunk_size = 10
+        self.stream.CHUNK_SIZE = 10
         chunk = self.stream.read(5)
         self.assertEqual(b"line1", chunk)
         self.assertEqual(b"\nline", self.stream.buffer)
@@ -38,7 +38,7 @@ class TestBufferedStream(base.TestCase):
         self.assertEqual(b"", self.stream.buffer)
 
     def test_readline(self):
-        self.stream.chunk_size = 12
+        self.stream.CHUNK_SIZE = 12
         chunk = self.stream.readline()
         self.assertEqual(b"line1\n", chunk)
         self.assertEqual(b"line2\n", self.stream.buffer)
@@ -47,7 +47,7 @@ class TestBufferedStream(base.TestCase):
         self.assertEqual(b"", self.stream.buffer)
 
     def test_readlines(self):
-        self.stream.chunk_size = 12
+        self.stream.CHUNK_SIZE = 12
         lines = list(self.stream.readlines())
         self.assertEqual(
             [b"line1\n", b"line2\n", b"line3\n"],
@@ -77,7 +77,7 @@ class TestGzipDecompress(base.TestCase):
         self.assertEqual(b"", self.stream.buffer)
 
     def test_readline(self):
-        self.stream.chunk_size = 12
+        self.stream.CHUNK_SIZE = 12
         chunk = self.stream.readline()
         self.assertEqual(b"line1\n", chunk)
         self.assertEqual(b"line2\nline3\n", self.stream.buffer)
@@ -86,7 +86,7 @@ class TestGzipDecompress(base.TestCase):
         self.assertEqual(b"", self.stream.buffer)
 
     def test_readlines(self):
-        self.stream.chunk_size = 12
+        self.stream.CHUNK_SIZE = 12
         lines = list(self.stream.readlines())
         self.assertEqual(
             [b"line1\n", b"line2\n", b"line3\n"],

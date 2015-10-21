@@ -19,7 +19,7 @@ import zlib
 
 class BufferedStream(object):
     """Stream object."""
-    chunk_size = 1024
+    CHUNK_SIZE = 1024
 
     def __init__(self, fileobj):
         self.fileobj = fileobj
@@ -37,14 +37,14 @@ class BufferedStream(object):
         self.buffer = chunk[size:]
         return chunk[:size]
 
-    def _read(self):
-        return self.fileobj.read(self.chunk_size)
+    def _read(self, chunksize):
+        return self.fileobj.read(chunksize)
 
     def read(self, size=-1):
         result = self._read_buffer()
         if size < 0:
             while True:
-                chunk = self._read()
+                chunk = self._read(self.CHUNK_SIZE)
                 if not chunk:
                     break
                 result += chunk
@@ -53,7 +53,7 @@ class BufferedStream(object):
                 result = self._align_chunk(result, size)
             size -= len(result)
             while size > 0:
-                chunk = self._read()
+                chunk = self._read(self.CHUNK_SIZE)
                 if not chunk:
                     break
                 if len(chunk) > size:
@@ -69,7 +69,7 @@ class BufferedStream(object):
         else:
             line = self._read_buffer()
             while True:
-                chunk = self._read()
+                chunk = self._read(self.CHUNK_SIZE)
                 if not chunk:
                     break
                 pos = chunk.find(b"\n")
@@ -100,8 +100,8 @@ class GzipDecompress(BufferedStream):
         # This works on cpython and pypy, but not jython.
         self.decompress = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
-    def _read(self):
-        chunk = self.fileobj.read(self.chunk_size)
+    def _read(self, chunksize):
+        chunk = self.fileobj.read(chunksize)
         if not chunk:
             return self.decompress.flush()
         return self.decompress.decompress(chunk)

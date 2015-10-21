@@ -15,6 +15,7 @@
 #    under the License.
 
 import mock
+import six
 import time
 
 from packetary.library import connections
@@ -234,3 +235,14 @@ class TestResumeableResponse(base.TestCase):
         self.assertEqual(b"chunk1chunk2", data)
         self.assertEqual(12, self.request.offset)
         self.assertEqual(1, self.opener.error.call_count)
+
+    def test_read(self):
+        self.request.offset = 0
+        response = connections.ResumeableStream(
+            self.request,
+            six.BytesIO(b"line1\nline2\nline3\n"),
+            self.opener
+        )
+        self.assertEqual(
+            b"line1\nline2\nline3\n", response.read()
+        )

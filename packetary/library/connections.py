@@ -43,10 +43,10 @@ class ResumeableStream(BufferedStream):
         self.request = request
         self.opener = opener
 
-    def _read(self):
+    def _read(self, chunksize):
         while 1:
             try:
-                chunk = self.fileobj.read(self.chunk_size)
+                chunk = self.fileobj.read(chunksize)
                 self.request.offset += len(chunk)
                 return chunk
             except IOError as e:
@@ -193,7 +193,7 @@ class ConnectionContext(object):
 class ConnectionsPool(object):
     """Controls the number of simultaneously opened connections."""
 
-    min_connections_count = 1
+    MIN_CONNECTIONS_COUNT = 1
 
     def __init__(self, options):
         retries = options.get("retries_count", 0)
@@ -211,7 +211,7 @@ class ConnectionsPool(object):
         )
 
         limit = max(
-            options.get("connection_count", 0), self.min_connections_count
+            options.get("connection_count", 0), self.MIN_CONNECTIONS_COUNT
         )
         connections = six.moves.queue.Queue()
         while limit > 0:
