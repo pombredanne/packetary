@@ -14,23 +14,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.tests.stubs.connections import Connections
-from packetary.tests.stubs.executor import Executor
+import mock
 
 
-class Context(object):
-    def __init__(self):
-        self.executor = Executor()
-        self.connections = Connections()
-
+class Connections(mock.MagicMock):
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
-        self.shutdown()
+        return False
 
-    def async_section(self, ignore_errors_num=None):
-        return self.executor
-
-    def shutdown(self, wait=True):
-        pass
+    def get(self, timeout=None):
+        return self

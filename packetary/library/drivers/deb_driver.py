@@ -98,7 +98,6 @@ class GzipMetaCollector(GzipDecompress):
             output[k].append((v, size, filename, self.weigth))
 
 
-
 class FileMetaCollector(StreamTransform):
     def __init__(self, fileobj, filename, weight):
         super(FileMetaCollector, self).__init__(fileobj)
@@ -242,7 +241,7 @@ class DebIndexWriter(IndexWriter):
         for d in components:
             comp_path = os.path.join(suite_dir, d)
             for root, dirs, files in os.walk(comp_path):
-                for f in files:
+                for f in six.moves.filter(_META_FILES_WEIGHT.__contains__, files):
                     filepath = os.path.join(root, f)
                     with closing(open(filepath, "rb")) as fobj:
                         if filepath.endswith(".gz"):
@@ -271,10 +270,6 @@ class DebIndexWriter(IndexWriter):
     def _dump_meta(stream, meta):
         for k, v in meta:
             stream.write("".join((k, ": ", v, "\n")))
-
-    @staticmethod
-    def _is_meta_file(n):
-        return n in _META_FILES_WEIGHT
 
 
 class Driver(RepoDriver):

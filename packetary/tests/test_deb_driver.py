@@ -15,11 +15,14 @@
 #    under the License.
 
 import mock
-import six
+import os
 
 from packetary.library.drivers.deb_driver import Driver
 from packetary.tests import base
 from packetary.tests.stubs.context import Context
+
+
+PACKAGES_GZ = os.path.join(os.path.dirname(__file__), "data", "packages.gz")
 
 
 class TestDebDriver(base.TestCase):
@@ -45,6 +48,7 @@ class TestDebDriver(base.TestCase):
         )
 
     def test_load(self):
+        pass
 #         suite, comp = repo
 #         index_file = "{0}/dists/{1}/{2}/binary-{3}/Packages.gz".format(
 #             baseurl, suite, comp, self.arch
