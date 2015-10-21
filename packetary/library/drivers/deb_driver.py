@@ -80,15 +80,17 @@ class GzipMetaCollector(GzipDecompress):
         return chunk
 
     def dump(self, output):
+        # cat .gz
+        filename = self.filename[:-3]
+        size = _format_size(self.unarchived_size)
+        for k, v in self.unarchived.get_result():
+            output[k].append((v, size, filename))
+
         filename = self.filename
         size = _format_size(self.original_size)
         for k, v in self.original.get_result():
             output[k].append((v, size, filename))
-        # cat .gz
-        filename = filename[:-3]
-        size = _format_size(self.unarchived_size)
-        for k, v in self.unarchived.get_result():
-            output[k].append((v, size, filename))
+
 
 
 class FileMetaCollector(StreamTransform):
@@ -187,13 +189,13 @@ class DebIndexWriter(IndexWriter):
         """Generates the release meta information."""
         meta_filename = os.path.join(path, "Release")
         with closing(open(meta_filename + ".tmp", "w")) as meta:
-            self._dump_meta(meta, {
-                "Active": suite,
-                "Component": component,
-                "Origin": self.origin,
-                "Label": self.origin,
-                "Architecture": self.driver.arch
-            })
+            self._dump_meta(meta, [
+                ("Archive", suite),
+                ("Component", component),
+                ("Origin", self.origin),
+                ("Label", self.origin),
+                ("Architecture", self.driver.arch)
+            ])
         os.rename(meta_filename + ".tmp", meta_filename)
 
     def _updates_global_releases(self, suites):
@@ -210,18 +212,18 @@ class DebIndexWriter(IndexWriter):
             with closing(open(release_file, "w")) as meta:
                 fcntl.flock(meta.fileno(), fcntl.LOCK_EX)
                 try:
-                    self._dump_meta(meta, {
-                        "Origin": self.origin,
-                        "Label": self.origin,
-                        "Suite": suite,
-                        "Codename": suite,
-                        "Architecture": self.driver.arch,
-                        "Components": " ".join(components),
-                        "Date": date_str,
-                        "Description": "{0} {1} Partial".format(
+                    self._dump_meta(meta, [
+                        ("Origin", self.origin),
+                        ("Label", self.origin),
+                        ("Suite", suite),
+                        ("Codename", suite),
+                        ("Architecture", self.driver.arch),
+                        ("Components", " ".join(components)),
+                        ("Date", date_str),
+                        ("Description", "{0} {1} Partial".format(
                             self.origin, suite
-                        ),
-                    })
+                        )),
+                    ])
                     self._dump_files(meta, suite_dir, components)
                 finally:
                     fcntl.flock(meta.fileno(), fcntl.LOCK_UN)
@@ -255,12 +257,12 @@ class DebIndexWriter(IndexWriter):
 
     @staticmethod
     def _dump_meta(stream, meta):
-        for k, v in six.iteritems(meta):
+        for k, v in meta:
             stream.write("".join((k, ": ", v, "\n")))
 
     @staticmethod
     def _is_meta_file(n):
-            return n.startswith("Release") or n.startswith("Packages.gz")
+        return n.startswith("Release") or n.startswith("Packages.gz")
 
 
 class Driver(RepoDriver):
@@ -291,7 +293,7 @@ class Driver(RepoDriver):
             elif baseurl.endswith("/"):
                 baseurl = baseurl[:-1]
 
-            for comp in comps.split(":"):
+            for comp in comps.split(" "):
                 yield baseurl, (suite, comp)
 
     def get_path(self, base, package):
