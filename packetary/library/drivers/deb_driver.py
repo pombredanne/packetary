@@ -49,7 +49,7 @@ _DEFAULT_ORIGIN = "Unknown"
 _SIZE_ALIGNMENT = 16
 
 
-class ChecksumProcessor(object):
+class ChecksumCollector(object):
     def __init__(self):
         self.processors = {
             "MD5Sum": hashlib.md5(),
@@ -72,8 +72,8 @@ class GzipMetaCollector(GzipDecompress):
         super(GzipMetaCollector, self).__init__(fileobj)
         self.filename = filename
         self.weigth = weigth
-        self.original = ChecksumProcessor()
-        self.unarchived = ChecksumProcessor()
+        self.original = ChecksumCollector()
+        self.unarchived = ChecksumCollector()
         self.original_size = 0
         self.unarchived_size = 0
 
@@ -103,7 +103,7 @@ class FileMetaCollector(StreamTransform):
         super(FileMetaCollector, self).__init__(fileobj)
         self.filename = filename
         self.weight = weight
-        self.meta = ChecksumProcessor()
+        self.meta = ChecksumCollector()
         self.file_size = 0
 
     def transform(self, chunk):

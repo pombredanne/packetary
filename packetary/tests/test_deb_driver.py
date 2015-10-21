@@ -19,7 +19,7 @@ from __future__ import with_statement
 import mock
 import os
 
-from packetary.library.drivers.deb_driver import Driver
+from packetary.library.drivers import deb_driver
 from packetary.tests import base
 from packetary.tests.stubs.context import Context
 
@@ -31,7 +31,7 @@ class TestDebDriver(base.TestCase):
     @classmethod
     def setUpClass(cls):
         super(TestDebDriver, cls).setUpClass()
-        cls.driver = Driver(
+        cls.driver = deb_driver.Driver(
             Context(),
             "x86_64"
         )
@@ -50,32 +50,31 @@ class TestDebDriver(base.TestCase):
         )
 
     @mock.patch("packetary.library.drivers.deb_driver")
-    def test_load(self, logger):
+    def test_load(self, _):
         packages = []
-        # connections = self.driver.connections
-        # with open(PACKAGES_GZ, "rb") as stream:
-        #     connections.open_stream.return_value = stream
-        #     self.driver.load("http://host", ("trusty", "main"), packages.append)
+        connection = self.driver.connections.connection
+        with open(PACKAGES_GZ, "rb") as stream:
+            connection.open_stream.return_value = stream
+            self.driver.load(
+                "http://host", ("trusty", "main"), packages.append
+            )
 
-        #open_stream.assert_called_once_with("")
-        # asserts
-
-
-#         suite, comp = repo
-#         index_file = "{0}/dists/{1}/{2}/binary-{3}/Packages.gz".format(
-#             baseurl, suite, comp, self.arch
-#         )
-#         logger.info("loading packages from: %s", index_file)
-#         with self.connections.get() as connection:
-#             stream = GzipDecompress(connection.open_stream(index_file))
-#             pkg_iter = deb822.Packages.iter_paragraphs(stream)
-#             for dpkg in pkg_iter:
-#                 consumer(DebPackage(dpkg, baseurl, suite, comp))
-#
-#         logger.info(
-#             "packages from %s has been loaded successfully.", index_file
-#         )
-
+        connection.open_stream.assert_called_once_with(
+            "http://host/dists/trusty/main/binary-amd64/Packages.gz",
+        )
+        self.assertEqual(1, len(packages))
+        self.assertEqual("libjs-angularjs", packages[0].name)
+        self.assertEqual("1.3.17-1~u14.04+mos1", packages[0].version)
+        self.assertEqual(399294, packages[0].size)
+        self.assertEqual(
+            ("sha1", "402bd18c145ae3b5344edf07f246be159397fd40"),
+            packages[0].checksum
+        )
+        self.assertEqual(
+            "pool/main/a/angular.js/"
+            "libjs-angularjs_1.3.17-1~u14.04+mos1_all.deb",
+            packages[0].filename
+        )
 
     def test_parse_urls(self):
         self.assertItemsEqual(
@@ -111,49 +110,19 @@ class TestDebDriver(base.TestCase):
                 ]
             )
         )
-#
-#
-# def create_index(self, destination):
-#         return DebIndexWriter(self, destination)
-#
-#     def parse_urls(self, urls):
-#         for url in urls:
-#             try:
-#                 baseurl, suite, comps = url.split(" ", 2)
-#             except ValueError:
-#                 raise ValueError(
-#                     "Invalid url: {0}\n"
-#                     "Expected: baseurl suite component[ component]"
-#                     .format(url)
-#                 )
-#
-#             if baseurl.endswith("/dists/"):
-#                 baseurl = baseurl[:-7]
-#             elif baseurl.endswith("/dists"):
-#                 baseurl = baseurl[:-6]
-#             elif baseurl.endswith("/"):
-#                 baseurl = baseurl[:-1]
-#
-#             for comp in comps.split(":"):
-#                 yield baseurl, (suite, comp)
-#
-#     def get_path(self, base, package):
-#         baseurl = base or package.baseurl
-#         return "/".join((baseurl, package.filename))
-#
-#     def load(self, baseurl, repo, consumer):
-#         """Loads from Packages.gz."""
-#         suite, comp = repo
-#         index_file = "{0}/dists/{1}/{2}/binary-{3}/Packages.gz".format(
-#             baseurl, suite, comp, self.arch
-#         )
-#         logger.info("loading packages from: %s", index_file)
-#         with self.connections.get() as connection:
-#             stream = GzipDecompress(connection.open_stream(index_file))
-#             pkg_iter = deb822.Packages.iter_paragraphs(stream)
-#             for dpkg in pkg_iter:
-#                 consumer(DebPackage(dpkg, baseurl, suite, comp))
-#
-#         logger.info(
-#             "packages from %s has been loaded successfully.", index_file
-#         )
+
+    def test_parse_urls_fail_if_invalid(self):
+        with self.assertRaisesRegexp(ValueError, "Invalid url:"):
+            next(self.driver.parse_urls(["http://host/dists/trusty main"]))
+        with self.assertRaisesRegexp(ValueError, "Invalid url:"):
+            next(self.driver.parse_urls(["http://host/dists trusty,main"]))
+
+
+class TestDebIndexWriter(base.TestCase):
+    def setUp(self):
+        super(TestDebIndexWriter, self).setUp()
+        self.writer = deb_driver.DebIndexWriter(
+            Context(),
+            "x86_64"
+        )
+

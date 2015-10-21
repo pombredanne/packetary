@@ -16,6 +16,8 @@
 
 from packetary.library.context import Context
 from packetary.library.index import Index
+from packetary.library.package import Relation
+from packetary.library.package import VersionRange
 from packetary.library.repository import Repository
 
 
@@ -31,6 +33,7 @@ def createmirror(context,
                  destination,
                  origin,
                  debs=None,
+                 bootstrap=None,
                  keep_existing=True):
     """Creates mirror of repository(es).
 
@@ -40,6 +43,7 @@ def createmirror(context,
     :param destination: the destination folder
     :param origin: the url(s) to origin repository
     :param debs: the url(s) of repositories to get dependency
+    :param bootstrap: the additional packages required for bootstrap
     :param keep_existing: Remove local packages that does not exist in repo.
     :return: the number of copied packages
     """
@@ -47,10 +51,25 @@ def createmirror(context,
     repository = Repository(context, kind, arch)
     packages = Index()
     repository.load_packages(origin, packages.add)
+    requires = None
     if debs is not None:
         requires = Index()
         repository.load_packages(debs, requires.add)
         requires = requires.get_unresolved()
+
+    if bootstrap is not None:
+        if requires is None:
+            requires = set()
+
+        for p in bootstrap:
+            tokens = p.split()
+            if len(tokens) > 1:
+                relation = Relation(tokens[0], VersionRange(tokens[1:]))
+            else:
+                relation = Relation(tokens[0], VersionRange())
+            requires.add(relation)
+
+    if requires is not None:
         if len(requires) == 0:
             return 0
         packages = packages.resolve(requires)

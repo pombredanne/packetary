@@ -17,9 +17,12 @@
 import mock
 
 
-class Connections(mock.MagicMock):
+class Connections(object):
+    def __init__(self):
+        self.connection = mock.MagicMock()
+
     def __enter__(self):
-        return self
+        return self.connection
 
     def __exit__(self, *_):
         return False

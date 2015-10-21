@@ -26,8 +26,7 @@ class CreateMirror(BaseRepoCommand):
         parser = super(CreateMirror, self).get_parser(prog_name)
 
         parser.add_argument(
-            "-d",
-            "--destination",
+            "-d", "--destination",
             required=True,
             help="The destination folder."
         )
@@ -37,8 +36,26 @@ class CreateMirror(BaseRepoCommand):
             default=False,
             help="Do not remove packages that does not exist in origin repo."
         )
-        requires_gr = parser.add_mutually_exclusive_group(required=False)
-        requires_gr.add_argument(
+
+        bootstrap_group = parser.add_mutually_exclusive_group(required=False)
+        bootstrap_group.add_argument(
+            "-b", "--bootstrap",
+            nargs='+',
+            dest='bootstrap',
+            metavar='PACKAGE [OP VERSION]',
+            type=six.text_type,
+            help="Bootstrap package(s)."
+        )
+        bootstrap_group.add_argument(
+            "-B", "--bootstrap-file",
+            type=read_lines_from_file,
+            dest='bootstrap',
+            metavar='FILENAME',
+            help="Bootstrap package(s)."
+        )
+
+        requires_group = parser.add_mutually_exclusive_group(required=False)
+        requires_group.add_argument(
             '-r', '--requires-url',
             nargs="+",
             dest='requires',
@@ -46,7 +63,7 @@ class CreateMirror(BaseRepoCommand):
             metavar='URL',
             help='Space separated list of urls for origin repositories.')
 
-        requires_gr.add_argument(
+        requires_group.add_argument(
             '-R', '--requires-file',
             type=read_lines_from_file,
             dest='requires',
@@ -63,6 +80,7 @@ class CreateMirror(BaseRepoCommand):
             parsed_args.destination,
             parsed_args.origins,
             parsed_args.requires,
+            parsed_args.bootstrap,
             parsed_args.keep_existing
         )
         self.app.stdout.write("Packages copied: %d.\n" % packages_count)
