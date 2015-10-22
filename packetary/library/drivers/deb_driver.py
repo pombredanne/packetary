@@ -38,7 +38,7 @@ _ARCH_MAPPING = {
     'x86_64': 'amd64',
 }
 
-_META_FILES_WEIGHT = {
+_INDEX_FILES_ORDER = {
     "Packages": 1,
     "Release": 2,
     "Packages.gz": 3,
@@ -172,7 +172,7 @@ class DebIndexWriter(IndexWriter):
             comp_path = os.path.join(suite_dir, d)
             for root, dirs, files in os.walk(comp_path):
                 files = six.moves.filter(
-                    _META_FILES_WEIGHT.__contains__, files
+                    _INDEX_FILES_ORDER.__contains__, files
                 )
                 for f in files:
                     filepath = os.path.join(root, f)
@@ -187,7 +187,7 @@ class DebIndexWriter(IndexWriter):
                                 h,
                                 _format_size(size),
                                 filepath[len(suite_dir) + 1:],
-                                _META_FILES_WEIGHT[f]
+                                (root, _INDEX_FILES_ORDER[f])
                             ))
 
         index = sorted(six.iteritems(index), key=lambda x: x[0])
