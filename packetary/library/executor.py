@@ -75,6 +75,8 @@ class AsynchronousSection(object):
                 "Task failed: %s", six.text_type(e),
             )
 
+        self.tasks.remove(fut)
+
     def wait(self, ignore_errors=False):
         """Waits until all tasks will be completed.
 

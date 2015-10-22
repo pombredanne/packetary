@@ -87,13 +87,10 @@ class CreateMirror(BaseRepoCommand):
         self.app.stdout.write("Packages copied: %d.\n" % packages_count)
 
 
+def debug(argv=None):
+    from packetary.cli.app import debug
+    debug("mirror", CreateMirror, argv)
+
+
 if __name__ == "__main__":
-    import sys
-
-    from packetary.cli.app import test
-
-    test(
-        "mirror",
-        CreateMirror,
-        ["mirror"] + sys.argv[1:] + ["-v", "-v", "--debug"]
-    )
+    debug()

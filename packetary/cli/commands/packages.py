@@ -41,13 +41,10 @@ class ListPackages(BaseProduceOutputCommand):
         )
 
 
+def debug(argv=None):
+    from packetary.cli.app import debug
+    debug("packages", ListPackages, argv)
+
+
 if __name__ == "__main__":
-    import sys
-
-    from packetary.cli.app import test
-
-    test(
-        "packages",
-        ListPackages,
-        ["packages"] + sys.argv[1:] + ["-v", "-v", "--debug"]
-    )
+    debug()

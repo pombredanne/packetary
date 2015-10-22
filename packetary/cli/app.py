@@ -47,18 +47,11 @@ class Application(app.App):
             help="The number of retries."
         )
         parser.add_argument(
-            "--threads-count",
+            "--thread-count",
             default=3,
             type=int,
             metavar="NUMBER",
             help="The number of threads."
-        )
-        parser.add_argument(
-            "--queue-size",
-            default=None,
-            type=int,
-            metavar="NUMBER",
-            help="The queue limit, unlimited by default."
         )
         parser.add_argument(
             "--connection-count",
@@ -70,14 +63,12 @@ class Application(app.App):
         parser.add_argument(
             "--connection-proxy",
             default=None,
-            type=int,
             metavar="http://username:password@proxy_host:proxy_port",
             help="The http proxy url."
         )
         parser.add_argument(
             "--connection-secure-proxy",
             default=None,
-            type=int,
             metavar="http://username:password@proxy_host:proxy_port",
             help="The https proxy url."
         )
@@ -92,7 +83,14 @@ def main(argv=None):
     ).run(argv)
 
 
-def test(name, cmd_class, argv):
+def debug(name, cmd_class, argv=None):
+    """Helps to debug command."""
+    import sys
+
+    if argv is None:
+        argv = sys.argv[1:]
+
+    argv = [name] + argv + ["-v", "-v", "--debug"]
     cmd_mgr = CommandManager("test_packetary", convert_underscores=True)
     cmd_mgr.add_command(name, cmd_class)
     return Application(

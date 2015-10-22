@@ -35,13 +35,11 @@ class ListUnresolved(BaseProduceOutputCommand):
             make_display_attr_getter(self.columns)
         )
 
+
+def debug(argv=None):
+    from packetary.cli.app import debug
+    debug("unresolved", ListUnresolved, argv)
+
+
 if __name__ == "__main__":
-    import sys
-
-    from packetary.cli.app import test
-
-    test(
-        "unresolved",
-        ListUnresolved,
-        ["unresolved"] + sys.argv[1:] + ["-v", "-v", "--debug"]
-    )
+    debug()
