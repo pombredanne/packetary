@@ -21,10 +21,15 @@ from packetary.library.executor import Executor
 
 class Context(object):
 
-    def __init__(self, options):
-        self.executor = Executor(options)
-        self.connections = ConnectionsPool(options)
-        self.ignore_errors_num = options.get('ignore_errors_count', 0)
+    def __init__(self, **kwargs):
+        self.executor = Executor(kwargs.get("threads_count", 1))
+        self.connections = ConnectionsPool(
+            count=kwargs.get("connections_count", 0),
+            retries_num=kwargs.get("retries_count", 0),
+            proxy=kwargs.get("connection_proxy"),
+            secure_proxy=kwargs.get("connection_secure_proxy")
+        )
+        self.ignore_errors_num = kwargs.get('ignore_errors_count', 0)
 
     def __enter__(self):
         return self

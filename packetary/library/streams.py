@@ -17,16 +17,21 @@
 import zlib
 
 
-class BufferedStream(object):
-    """Stream object."""
+class StreamWrapper(object):
+    """Helper class to implement wrapper around file-like object."""
+
     CHUNK_SIZE = 1024
 
-    def __init__(self, fileobj):
-        self.fileobj = fileobj
+    def __init__(self, stream):
+        """Initializes.
+
+        :param stream: file-like object opened in binary mode.
+        """
+        self.stream = stream
         self.buffer = b""
 
     def __getattr__(self, item):
-        return getattr(self.fileobj, item)
+        return getattr(self.stream, item)
 
     def _read_buffer(self):
         tmp = self.buffer
@@ -37,14 +42,15 @@ class BufferedStream(object):
         self.buffer = chunk[size:]
         return chunk[:size]
 
-    def _read(self, chunksize):
-        return self.fileobj.read(chunksize)
+    def read_chunk(self, chunksize):
+        """Overrides this method to change default behaviour."""
+        return self.stream.read(chunksize)
 
     def read(self, size=-1):
         result = self._read_buffer()
         if size < 0:
             while True:
-                chunk = self._read(self.CHUNK_SIZE)
+                chunk = self.read_chunk(self.CHUNK_SIZE)
                 if not chunk:
                     break
                 result += chunk
@@ -53,7 +59,7 @@ class BufferedStream(object):
                 result = self._align_chunk(result, size)
             size -= len(result)
             while size > 0:
-                chunk = self._read(self.CHUNK_SIZE)
+                chunk = self.read_chunk(self.CHUNK_SIZE)
                 if not chunk:
                     break
                 if len(chunk) > size:
@@ -69,7 +75,7 @@ class BufferedStream(object):
         else:
             line = self._read_buffer()
             while True:
-                chunk = self._read(self.CHUNK_SIZE)
+                chunk = self.read_chunk(self.CHUNK_SIZE)
                 if not chunk:
                     break
                 pos = chunk.find(b"\n")
@@ -90,18 +96,18 @@ class BufferedStream(object):
         return self.readlines()
 
 
-class GzipDecompress(BufferedStream):
+class GzipDecompress(StreamWrapper):
     """The decompress stream."""
 
-    def __init__(self, fileobj):
-        super(GzipDecompress, self).__init__(fileobj)
+    def __init__(self, stream):
+        super(GzipDecompress, self).__init__(stream)
         # Magic parameter makes zlib module understand gzip header
         # http://stackoverflow.com/questions/1838699/how-can-i-decompress-a-gzip-stream-with-zlib
         # This works on cpython and pypy, but not jython.
         self.decompress = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
-    def _read(self, chunksize):
-        chunk = self.fileobj.read(chunksize)
+    def read_chunk(self, chunksize):
+        chunk = self.stream.read(chunksize)
         if not chunk:
             return self.decompress.flush()
         return self.decompress.decompress(chunk)

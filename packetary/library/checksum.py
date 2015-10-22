@@ -18,7 +18,7 @@ import functools
 import hashlib
 
 
-class _CompositeMethod(object):
+class _HashComposite(object):
     """Combines several hash methods."""
 
     def __init__(self, methods):
@@ -36,15 +36,20 @@ def _new_composite(methods):
     """Creates new composite method."""
 
     def wrapper():
-        return _CompositeMethod([x() for x in methods])
+        return _HashComposite([x() for x in methods])
     return wrapper
 
 
 def _checksum(method):
     """Makes function to calculate checksum for stream."""
-
     @functools.wraps(method)
     def calculate(stream, chunksize=16 * 1024):
+        """Calculates checksum for binary stream.
+
+        :param stream: file-like object opened in binary mode.
+        :return: the checksum of content in terms of method.
+        """
+
         s = method()
         while True:
             chunk = stream.read(chunksize)

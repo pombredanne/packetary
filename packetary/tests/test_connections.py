@@ -24,32 +24,33 @@ from packetary.tests import base
 
 class TestConnectionsPool(base.TestCase):
     def test_get_connection(self):
-        pool = connections.ConnectionsPool({"connection_count": 2})
+        pool = connections.ConnectionsPool(count=2)
         self.assertEqual(2, pool.free.qsize())
         with pool.get():
             self.assertEqual(1, pool.free.qsize())
         self.assertEqual(2, pool.free.qsize())
 
-    def test_set_proxy(self):
-        pool = connections.ConnectionsPool({
-            "connection_count": 1,
-            "connection_proxy": "http://10.250.1.1",
-        })
+    def _check_proxies(self, pool, http_proxy, https_proxy):
         with pool.get() as c:
             for h in c.opener.handlers:
                 if isinstance(h, connections.urllib_request.ProxyHandler):
                     self.assertEqual(
-                        "http://10.250.1.1", h.proxies["http"]
+                        (http_proxy, https_proxy),
+                        (h.proxies["http"], h.proxies["https"])
                     )
                     break
             else:
                 self.fail("ProxyHandler should be in list of handlers.")
 
+    def test_set_proxy(self):
+        pool = connections.ConnectionsPool(count=1, proxy="http://localhost")
+        self._check_proxies(pool, "http://localhost", "http://localhost")
+        pool = connections.ConnectionsPool(
+            proxy="http://localhost", secure_proxy="https://localhost")
+        self._check_proxies(pool, "http://localhost", "https://localhost")
+
     def test_reliability(self):
-        pool = connections.ConnectionsPool({
-            "connection_count": 0,
-            "retries_count": 2
-        })
+        pool = connections.ConnectionsPool(count=0, retries_num=2)
         self.assertEqual(1, pool.free.qsize())
         with pool.get() as c:
             self.assertEqual(2, c.retries_num)

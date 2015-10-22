@@ -15,7 +15,6 @@
 #    under the License.
 
 import mock
-import six
 import threading
 import time
 
@@ -27,49 +26,11 @@ def _raise_value_error(*_):
     raise ValueError("error")
 
 
-class TestExecutor(base.TestCase):
-    def setUp(self):
-        super(TestExecutor, self).setUp()
-        self.executor = executor.Executor({"threads_count": 2})
-        self.results = []
-
-    def _on_complete(self, e):
-        if e is None:
-            self.results.append(e)
-        else:
-            self.results.append(six.text_type(e))
-
-    @mock.patch("packetary.library.executor.logger")
-    def test_execute(self, logger):
-        self.executor.execute(lambda: time.sleep(0), self._on_complete)
-        self.executor.execute(_raise_value_error, self._on_complete)
-        self.executor.execute(lambda: time.sleep(0), _raise_value_error)
-        self.executor.shutdown()
-        self.assertItemsEqual([None, 'error'], self.results)
-        logger.exception.assert_called_with(
-            "Exception in callback: %s", "error"
-        )
-
-    def _create_tasks_and_shutdown(self, wait):
-        self.executor.execute(lambda: time.sleep(0.5), self._on_complete)
-        self.executor.execute(lambda: time.sleep(0.5), self._on_complete)
-        self.executor.execute(_raise_value_error, self._on_complete)
-        self.executor.shutdown(wait)
-
-    def test_shutdown_with_wait(self):
-        self._create_tasks_and_shutdown(True)
-        self.assertItemsEqual([None, None, 'error'], self.results)
-
-    def test_shutdown_without_wait(self):
-        self._create_tasks_and_shutdown(False)
-        self.assertNotIn("error", self.results)
-
-
 @mock.patch("packetary.library.executor.logger")
 class TestAsynchronousSection(base.TestCase):
     def setUp(self):
         super(TestAsynchronousSection, self).setUp()
-        self.executor = executor.Executor({"threads_count": 2})
+        self.executor = executor.Executor(max_workers=2)
         self.results = []
 
     def test_isolation(self, _):
@@ -88,7 +49,9 @@ class TestAsynchronousSection(base.TestCase):
         scope.execute(time.sleep, 0)
         scope.wait(ignore_errors=True)
         self.assertEqual(1, scope.errors)
-        logger.exception.assert_called_with("Task failed: %s", "error")
+        logger.exception.assert_called_with(
+            "Task failed: %s", "error"
+        )
 
     def test_fail_if_too_many_errors(self, _):
         scope = executor.AsynchronousSection(self.executor, 0)

@@ -22,10 +22,10 @@ from packetary.library.package import Relation
 from packetary.library.repository import Repository
 
 
-def create_context(options):
+def create_context(**kwargs):
     """Creates context."""
 
-    return Context(options)
+    return Context(**kwargs)
 
 
 def createmirror(context,

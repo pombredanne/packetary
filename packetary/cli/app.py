@@ -74,6 +74,13 @@ class Application(app.App):
             metavar="http://username:password@proxy_host:proxy_port",
             help="The http proxy url."
         )
+        parser.add_argument(
+            "--connection-secure-proxy",
+            default=None,
+            type=int,
+            metavar="http://username:password@proxy_host:proxy_port",
+            help="The https proxy url."
+        )
         return parser
 
 

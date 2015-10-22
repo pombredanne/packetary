@@ -21,7 +21,7 @@ import six.moves.urllib.request as urllib_request
 import six.moves.urllib_error as urllib_error
 import time
 
-from packetary.library.streams import BufferedStream
+from packetary.library.streams import StreamWrapper
 
 
 logger = logging.getLogger(__package__)
@@ -37,24 +37,24 @@ class RetryableRequest(urllib_request.Request):
     start_time = 0
 
 
-class ResumeableStream(BufferedStream):
+class ResumeableStream(StreamWrapper):
     def __init__(self, request, response, opener):
         super(ResumeableStream, self).__init__(response)
         self.request = request
         self.opener = opener
 
-    def _read(self, chunksize):
+    def read_chunk(self, chunksize):
         while 1:
             try:
-                chunk = self.fileobj.read(chunksize)
+                chunk = self.stream.read(chunksize)
                 self.request.offset += len(chunk)
                 return chunk
             except IOError as e:
                 response = self.opener.error(
                     self.request.get_type(), self.request,
-                    self.fileobj, 502, six.text_type(e), self.fileobj.info()
+                    self.stream, 502, six.text_type(e), self.stream.info()
                 )
-                self.fileobj = response.fileobj
+                self.stream = response.stream
 
 
 class RetryHandler(urllib_request.BaseHandler):
@@ -195,12 +195,11 @@ class ConnectionsPool(object):
 
     MIN_CONNECTIONS_COUNT = 1
 
-    def __init__(self, options):
-        retries = options.get("retries_count", 0)
-        http_proxy = options.get("connection_proxy")
-        if http_proxy:
+    def __init__(self, count=0, proxy=None, secure_proxy=None, retries_num=0):
+        if proxy:
             proxies = {
-                "http": http_proxy,
+                "http": proxy,
+                "https": secure_proxy or proxy,
             }
         else:
             proxies = None
@@ -210,12 +209,10 @@ class ConnectionsPool(object):
             urllib_request.ProxyHandler(proxies)
         )
 
-        limit = max(
-            options.get("connection_count", 0), self.MIN_CONNECTIONS_COUNT
-        )
+        limit = max(count, self.MIN_CONNECTIONS_COUNT)
         connections = six.moves.queue.Queue()
         while limit > 0:
-            connections.put(Connection(opener, retries))
+            connections.put(Connection(opener, retries_num))
             limit -= 1
 
         self.free = connections

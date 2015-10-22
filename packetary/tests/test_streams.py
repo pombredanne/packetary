@@ -24,7 +24,7 @@ from packetary.tests import base
 class TestBufferedStream(base.TestCase):
     def setUp(self):
         super(TestBufferedStream, self).setUp()
-        self.stream = streams.BufferedStream(
+        self.stream = streams.StreamWrapper(
             six.BytesIO(b"line1\nline2\nline3\n")
         )
 
@@ -51,8 +51,7 @@ class TestBufferedStream(base.TestCase):
         lines = list(self.stream.readlines())
         self.assertEqual(
             [b"line1\n", b"line2\n", b"line3\n"],
-            lines
-        )
+            lines)
 
 
 class TestGzipDecompress(base.TestCase):
@@ -91,5 +90,4 @@ class TestGzipDecompress(base.TestCase):
         lines = list(self.stream.readlines())
         self.assertEqual(
             [b"line1\n", b"line2\n", b"line3\n"],
-            lines
-        )
+            lines)

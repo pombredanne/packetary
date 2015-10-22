@@ -70,7 +70,7 @@ class BaseRepoCommand(command.Command):
         :return: the result of take_repo_action
         :rtype: object
         """
-        with create_context(self.app_args.__dict__) as context:
+        with create_context(**self.app_args.__dict__) as context:
             signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
             return self.take_repo_action(
                 context,
