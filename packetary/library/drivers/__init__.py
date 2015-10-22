@@ -18,6 +18,7 @@ supported_drivers = ["deb", "yum"]
 
 __all__ = supported_drivers
 
+
 def _lazy_loader(name):
     """Loads driver on demand."""
 

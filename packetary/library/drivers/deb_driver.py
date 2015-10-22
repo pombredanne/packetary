@@ -18,7 +18,6 @@ from contextlib import closing
 from datetime import datetime
 from debian import deb822
 import fcntl
-import hashlib
 import gzip
 import logging
 import os
@@ -126,7 +125,7 @@ class DebIndexWriter(IndexWriter):
     def _generate_component_release(self, path, suite, component):
         """Generates the release meta information."""
         meta_filename = os.path.join(path, "Release")
-        with closing(open(meta_filename + ".tmp", "w")) as meta:
+        with closing(open(meta_filename, "w")) as meta:
             self._dump_meta(meta, [
                 ("Archive", suite),
                 ("Component", component),
@@ -134,12 +133,11 @@ class DebIndexWriter(IndexWriter):
                 ("Label", self.origin),
                 ("Architecture", self.driver.arch)
             ])
-        os.rename(meta_filename + ".tmp", meta_filename)
 
     def _updates_global_releases(self, suites):
         """Generates the overall meta information."""
         path = os.path.join(self.destination, "dists")
-        date_str = six.text_type(datetime.utcnow())
+        date_str = datetime.now().strftime("%a, %d %b %Y %H:%M:%S %Z")
         for suite in suites:
             suite_dir = os.path.join(path, suite)
             components = [
@@ -173,7 +171,10 @@ class DebIndexWriter(IndexWriter):
         for d in components:
             comp_path = os.path.join(suite_dir, d)
             for root, dirs, files in os.walk(comp_path):
-                for f in six.moves.filter(_META_FILES_WEIGHT.__contains__, files):
+                files = six.moves.filter(
+                    _META_FILES_WEIGHT.__contains__, files
+                )
+                for f in files:
                     filepath = os.path.join(root, f)
                     with closing(open(filepath, "rb")) as stream:
                         size = os.fstat(stream.fileno()).st_size

@@ -17,14 +17,17 @@
 from __future__ import with_statement
 
 import mock
-import os
+import os.path as path
+import six
+
 
 from packetary.library.drivers import deb_driver
+from packetary.library.package import Relation
 from packetary.tests import base
 from packetary.tests.stubs.context import Context
 
 
-PACKAGES_GZ = os.path.join(os.path.dirname(__file__), "data", "packages.gz")
+PACKAGES_GZ = path.join(path.dirname(__file__), "data", "packages.gz")
 
 
 class TestDebDriver(base.TestCase):
@@ -49,8 +52,7 @@ class TestDebDriver(base.TestCase):
             self.driver.get_path(None, package)
         )
 
-    @mock.patch("packetary.library.drivers.deb_driver")
-    def test_load(self, _):
+    def test_load(self):
         packages = []
         connection = self.driver.connections.connection
         with open(PACKAGES_GZ, "rb") as stream:
@@ -63,17 +65,28 @@ class TestDebDriver(base.TestCase):
             "http://host/dists/trusty/main/binary-amd64/Packages.gz",
         )
         self.assertEqual(1, len(packages))
-        self.assertEqual("libjs-angularjs", packages[0].name)
-        self.assertEqual("1.3.17-1~u14.04+mos1", packages[0].version)
-        self.assertEqual(399294, packages[0].size)
+        package = packages[0]
+        self.assertEqual("test", package.name)
+        self.assertEqual("1.1.1-1~u14.04+test", package.version)
+        self.assertEqual(100, package.size)
         self.assertEqual(
             ("sha1", "402bd18c145ae3b5344edf07f246be159397fd40"),
             packages[0].checksum
         )
         self.assertEqual(
-            "pool/main/a/angular.js/"
-            "libjs-angularjs_1.3.17-1~u14.04+mos1_all.deb",
-            packages[0].filename
+            "pool/main/t/test.deb", package.filename
+        )
+        self.assertItemsEqual(
+            [Relation(['test2', 'ge', '0.8.16~exp9', 'tes2-old']),
+             Relation('test3'),
+             Relation('test-main')],
+            package.requires
+        )
+        self.assertItemsEqual(
+            [Relation("file")], package.provides
+        )
+        self.assertItemsEqual(
+            [Relation("test-old")], package.obsoletes
         )
 
     def test_parse_urls(self):
@@ -118,11 +131,116 @@ class TestDebDriver(base.TestCase):
             next(self.driver.parse_urls(["http://host/dists trusty,main"]))
 
 
+@mock.patch.multiple(
+    "packetary.library.drivers.deb_driver",
+    os=mock.DEFAULT,
+    gzip=mock.DEFAULT,
+    open=mock.DEFAULT,
+    fcntl=mock.DEFAULT,
+)
 class TestDebIndexWriter(base.TestCase):
     def setUp(self):
         super(TestDebIndexWriter, self).setUp()
+        driver = mock.MagicMock()
+        driver.arch = "x86_64"
         self.writer = deb_driver.DebIndexWriter(
-            Context(),
-            "x86_64"
+            driver,
+            "/root"
         )
 
+    def test_add(self, **_):
+        pass
+
+    def test_flush(self, gzip, open, os, fcntl):
+        package = mock.MagicMock(suite="trusty", comp="main")
+        package.dpkg.get.return_value = "Test"
+        self.writer.add(package)
+        os.path.join = path.join
+        os.path.exists.return_value = True
+        self.writer.flush(True)
+        open.assert_any_call(
+            "/root/dists/trusty/main/binary-x86_64/Packages", "wb"
+        )
+        open.assert_any_call(
+            "/root/dists/trusty/main/binary-x86_64/Release", "w"
+        )
+        open.assert_any_call(
+            "/root/dists/trusty/Release", "w"
+        )
+        gzip.open.assert_any_call(
+            "/root/dists/trusty/main/binary-x86_64/Packages.gz", "wb"
+        )
+        self.writer.driver.load.assert_called_with(
+            "/root", ("trusty", "main"), mock.ANY
+        )
+        fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_EX)
+        fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_UN)
+
+    def test_flush_with_cleanup(self, os, **_):
+        self.writer.driver.load = \
+            lambda *x: x[-1](mock.MagicMock(filename="test.pkg"))
+        self.writer.driver.get_path.return_value = "/root/test.pkg"
+        os.path.join = path.join
+        os.path.exists.return_value = True
+
+        package = mock.MagicMock(suite="trusty", comp="main")
+        package.dpkg.get.return_value = "Test"
+        self.writer.add(package)
+        self.writer.flush(False)
+
+        os.remove.assert_called_once_with("/root/test.pkg")
+
+    def test_updates_global_releases(self, os, open, **_):
+        os.path.join = path.join
+        os.listdir.return_value = ["main"]
+        os.walk.return_value = [(
+            "/root/dists/trusty/main",
+            [],
+            ["Release", "Packages", "Packages.gz", "test.pkg"]
+        )]
+        os.path.isdir.return_value = True
+        os.fstat.side_effect = [
+            mock.MagicMock(st_size=1),
+            mock.MagicMock(st_size=10),
+            mock.MagicMock(st_size=10000000000000000),
+        ]
+
+        meta_stream = six.StringIO()
+        open.return_value = mock.MagicMock(write=meta_stream.write)
+        open.return_value.read.side_effect = [
+            b"f1", "",
+            b"f2", "",
+            b"f3", "",
+        ]
+        self.writer.origin = "test"
+        self.writer._updates_global_releases(["trusty"])
+
+        content = meta_stream.getvalue()
+        start = content.find("Components:")
+        self.assertNotEqual(-1, start)
+        end = content.find("\n", start)
+        self.assertEqual(
+            "Components: main", content[start:end]
+        )
+
+        files = [
+            ("10", "Packages"),
+            ("1", "Release"),
+            ("10000000000000000", "Packages.gz"),
+        ]
+
+        for h in ("MD5Sum:", "SHA1", "SHA256"):
+            start = content.find(h, end + 1)
+            self.assertNotEqual(-1, start)
+            start += len(h) + 1
+            for size, name in files:
+                end = content.find("\n", start + 1)
+                expected = "{0}{1} main/{2}".format(
+                    " " * (deb_driver._SIZE_ALIGNMENT - len(size)),
+                    size,
+                    name
+                )
+                self.assertTrue(
+                    content[start:end].endswith(expected)
+                )
+                start = end + 1

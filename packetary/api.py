@@ -17,7 +17,6 @@
 from packetary.library.context import Context
 from packetary.library.index import Index
 from packetary.library.package import Relation
-from packetary.library.package import VersionRange
 from packetary.library.repository import Repository
 
 
@@ -62,12 +61,7 @@ def createmirror(context,
             requires = set()
 
         for p in bootstrap:
-            tokens = p.split()
-            if len(tokens) > 1:
-                relation = Relation(tokens[0], VersionRange(tokens[1:]))
-            else:
-                relation = Relation(tokens[0], VersionRange())
-            requires.add(relation)
+            requires.add(Relation(p.split()))
 
     if requires is not None:
         if len(requires) == 0:
