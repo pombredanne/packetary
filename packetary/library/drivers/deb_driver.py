@@ -90,7 +90,7 @@ class DebIndexWriter(IndexWriter):
         logger.info("the index file: %s.", index_file)
         dirty_files = set()
         if keep_existing:
-            on_existing_package = lambda x: packages.insert(p, None)
+            on_existing_package = lambda x: packages.insert(x, None)
             handler = lambda x: None
         else:
             on_existing_package = lambda x: dirty_files.add(x.filename)

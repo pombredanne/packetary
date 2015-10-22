@@ -31,10 +31,11 @@ class CreateMirror(BaseRepoCommand):
             help="The destination folder."
         )
         parser.add_argument(
-            "--keep-existing",
-            action='store_true',
-            default=False,
-            help="Do not remove packages that does not exist in origin repo."
+            "--clean",
+            dest="keep_existing",
+            action='store_false',
+            default=True,
+            help="Remove packages that does not exist in origin repo."
         )
 
         bootstrap_group = parser.add_mutually_exclusive_group(required=False)

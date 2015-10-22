@@ -40,15 +40,13 @@ class TestDebDriver(base.TestCase):
         )
 
     def test_get_path(self):
-        package = mock.MagicMock()
-        package.baseurl = "."
-        package.filename = "test.dpkg"
+        package = mock.MagicMock(baseurl=".", filename="test.deb")
         self.assertEqual(
-            "dir/test.dpkg",
+            "dir/test.deb",
             self.driver.get_path("dir", package)
         )
         self.assertEqual(
-            "./test.dpkg",
+            "./test.deb",
             self.driver.get_path(None, package)
         )
 
@@ -157,6 +155,9 @@ class TestDebIndexWriter(base.TestCase):
         package.dpkg.get.return_value = 'unknown'
         self.writer.add(package)
         self.assertEqual("test", self.writer.origin)
+        self.assertIsNone(
+            self.writer.index[(package.suite, package.comp)][package]
+        )
 
     def test_commit(self, gzip, open, os, fcntl):
         package = mock.MagicMock(suite="trusty", comp="main")
@@ -164,6 +165,8 @@ class TestDebIndexWriter(base.TestCase):
         self.writer.add(package)
         os.path.join = path.join
         os.path.exists.return_value = True
+        self.writer.driver.load = \
+            lambda *x: x[-1](package)
         self.writer.commit(True)
         open.assert_any_call(
             "/root/dists/trusty/main/binary-x86_64/Packages", "wb"
@@ -176,9 +179,6 @@ class TestDebIndexWriter(base.TestCase):
         )
         gzip.open.assert_any_call(
             "/root/dists/trusty/main/binary-x86_64/Packages.gz", "wb"
-        )
-        self.writer.driver.load.assert_called_with(
-            "/root", ("trusty", "main"), mock.ANY
         )
         fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_EX)
         fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_UN)

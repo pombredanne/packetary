@@ -21,7 +21,7 @@ from packetary.library.package import Relation
 from packetary.library.package import VersionRange
 
 
-_PackageVersion = namedtuple(
+_Version = namedtuple(
     "_PackageVersion", ("epoch", "version", "release")
 )
 
@@ -32,9 +32,9 @@ _namespaces = {
 }
 
 
-class PackageVersion(_PackageVersion):
+class Version(_Version):
     def __new__(cls, args):
-        return _PackageVersion.__new__(
+        return _Version.__new__(
             cls,
             int(args.get("epoch", 0)),
             tuple(args.get("ver", "0.0").split(".")),
@@ -52,7 +52,7 @@ def _get_version_range(args):
         return VersionRange()
     return VersionRange(
         args["flags"].lower(),
-        PackageVersion(args)
+        Version(args)
     )
 
 
@@ -89,7 +89,7 @@ class YumPackage(Package):
         self.repo = tuple(baseurl.rsplit("/", 3)[1:-1])
         self._baseurl = baseurl
         self._name = _find(pkg_tag, "./main:name").text
-        self._version = PackageVersion(
+        self._version = Version(
             _find(pkg_tag, "./main:version").attrib
         )
         self._size = int(_find(pkg_tag, "./main:size").attrib.get("package"))

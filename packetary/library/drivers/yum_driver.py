@@ -61,7 +61,7 @@ class YumIndexWriter(IndexWriter):
     def add(self, p):
         self.repos[p.reponame].add(p.filename)
 
-    def flush(self, keep_existing=False):
+    def commit(self, keep_existing=False):
         if createrepo is None:
             six.print_(
                 "Please install createrepo utility and run the following "
