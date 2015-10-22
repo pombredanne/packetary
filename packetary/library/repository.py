@@ -50,7 +50,7 @@ class Repository(object):
             for package in producer:
                 scope.execute(self._copy_package, package, destination)
                 index_writer.add(package)
-        index_writer.flush(keep_existing)
+        index_writer.commit(keep_existing)
 
     def _copy_package(self, package, destination):
         """Synchronises remote file to local fs."""

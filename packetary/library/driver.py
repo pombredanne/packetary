@@ -28,8 +28,8 @@ class IndexWriter(object):
         """Adds package to index."""
 
     @abc.abstractmethod
-    def flush(self, keep_existing=False):
-        """Persistent changes on disk."""
+    def commit(self, keep_existing=False):
+        """Saves changes to disk."""
 
 
 @six.add_metaclass(abc.ABCMeta)

@@ -39,16 +39,16 @@ def _callback(func):
 class Executor(object):
     """Asynchronous tasks executor."""
 
-    default_threads_count = 1
-    default_queue_size = 100
+    DEFAULT_THREADS_COUNT = 1
+    DEFAULT_QUEUE_SIZE = 100
 
     _stopper = object()
 
     def __init__(self, options):
         threads_num = max(
-            options.get('threads_count', 0), self.default_threads_count
+            options.get('threads_count', 0), self.DEFAULT_THREADS_COUNT
         )
-        queue_size = options.get('queue_size') or self.default_queue_size
+        queue_size = options.get('queue_size') or self.DEFAULT_QUEUE_SIZE
         self.tasks = six.moves.queue.Queue(maxsize=queue_size)
         self.threads = threads = []
         self._closed = False
@@ -111,7 +111,7 @@ class Executor(object):
 class AsynchronousSection(object):
     """Allows calling function asynchronously with waiting on exit."""
 
-    poll_timeout = 5
+    POLL_TIMEOUT = 5
 
     def __init__(self, executor, ignore_errors_num):
         """Initialises.
@@ -176,7 +176,7 @@ class AsynchronousSection(object):
         try:
             while self.counter > 0:
                 logger.debug("%d: tasks left - %d.", id(self), self.counter)
-                self.condition.wait(self.poll_timeout)
+                self.condition.wait(self.POLL_TIMEOUT)
             logger.debug("%d: tasks left - 0.", id(self))
         finally:
             self.condition.release()

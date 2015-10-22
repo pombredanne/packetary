@@ -56,7 +56,7 @@ class TestRepository(base.TestCase):
         self.assertEqual(
             len(packages), index_writer.add.call_count
         )
-        index_writer.flush.assert_called_once_with(True)
+        index_writer.commit.assert_called_once_with(True)
 
         retrieve = self.repo.context.connections.get().__enter__().retrieve
         call_args = retrieve.call_args_list

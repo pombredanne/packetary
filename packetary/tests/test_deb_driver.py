@@ -149,15 +149,22 @@ class TestDebIndexWriter(base.TestCase):
         )
 
     def test_add(self, **_):
-        pass
+        package = mock.MagicMock(suite="trusty", comp="main")
+        package.dpkg.get.return_value = None
+        self.writer.add(package)
+        package.dpkg.get.return_value = 'test'
+        self.writer.add(package)
+        package.dpkg.get.return_value = 'unknown'
+        self.writer.add(package)
+        self.assertEqual("test", self.writer.origin)
 
-    def test_flush(self, gzip, open, os, fcntl):
+    def test_commit(self, gzip, open, os, fcntl):
         package = mock.MagicMock(suite="trusty", comp="main")
         package.dpkg.get.return_value = "Test"
         self.writer.add(package)
         os.path.join = path.join
         os.path.exists.return_value = True
-        self.writer.flush(True)
+        self.writer.commit(True)
         open.assert_any_call(
             "/root/dists/trusty/main/binary-x86_64/Packages", "wb"
         )
@@ -176,7 +183,7 @@ class TestDebIndexWriter(base.TestCase):
         fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_EX)
         fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_UN)
 
-    def test_flush_with_cleanup(self, os, **_):
+    def test_commit_with_cleanup(self, os, **_):
         self.writer.driver.load = \
             lambda *x: x[-1](mock.MagicMock(filename="test.pkg"))
         self.writer.driver.get_path.return_value = "/root/test.pkg"
@@ -186,7 +193,7 @@ class TestDebIndexWriter(base.TestCase):
         package = mock.MagicMock(suite="trusty", comp="main")
         package.dpkg.get.return_value = "Test"
         self.writer.add(package)
-        self.writer.flush(False)
+        self.writer.commit(False)
 
         os.remove.assert_called_once_with("/root/test.pkg")
 

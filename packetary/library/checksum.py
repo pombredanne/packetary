@@ -18,6 +18,28 @@ import functools
 import hashlib
 
 
+class _CompositeMethod(object):
+    """Combines several hash methods."""
+
+    def __init__(self, methods):
+        self.methods = methods
+
+    def update(self, data):
+        for m in self.methods:
+            m.update(data)
+
+    def hexdigest(self):
+        return [m.hexdigest() for m in self.methods]
+
+
+def _new_composite(methods):
+    """Creates new composite method."""
+
+    def wrapper():
+        return _CompositeMethod([x() for x in methods])
+    return wrapper
+
+
 def _checksum(method):
     """Makes function to calculate checksum for stream."""
 
@@ -40,15 +62,8 @@ sha1 = _checksum(hashlib.sha1)
 sha256 = _checksum(hashlib.sha256)
 
 
-def multi_checksum(*algorithms):
+def composite(*methods):
     """Calculate several checksum at one time."""
-    def calculate(stream, chunksize=16 * 1024):
-        methods = [getattr(hashlib, algo)() for algo in algorithms]
-        while True:
-            chunk = stream.read(chunksize)
-            if not chunk:
-                break
-            for m in methods:
-                m.update(chunk)
-        return [x.hexdigest() for x in methods]
-    return calculate
+    return _checksum(_new_composite(
+        [getattr(hashlib, x) for x in methods]
+    ))

@@ -14,22 +14,38 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from packetary.library.index import Index
 
 from packetary.tests import base
-from packetary.tests.stubs.driver import RepoDriver
+from packetary.tests.stubs.package import Package
 from packetary.tests.stubs.package import Relation
 from packetary.tests.stubs.package import VersionRange
 
 
 class TestIndex(base.TestCase):
-    def setUp(self):
-        super(TestIndex, self).setUp()
-        self.driver = RepoDriver()
-
     def _get_packages(self, count=1, **kwargs):
-        self.driver.generate_packages(count, **kwargs)
-        return self.driver.packages
+        packages = []
+        for i in six.moves.range(count):
+            requires = [
+                Relation("package%d_r" % i, VersionRange())
+            ]
+            obsoletes = [
+                Relation("package%d_o" % i, VersionRange("le", 2))
+            ]
+            provides = [
+                Relation("package%d_p" % i, VersionRange("gt", 1))
+            ]
+            packages.append(Package(
+                name="package%d" % i,
+                requires=requires,
+                obsoletes=obsoletes,
+                provides=provides,
+                **kwargs
+            ))
+
+        return packages
 
     def test_add(self):
         index = Index()

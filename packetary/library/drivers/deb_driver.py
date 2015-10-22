@@ -23,7 +23,7 @@ import logging
 import os
 import six
 
-from packetary.library.checksum import multi_checksum
+from packetary.library.checksum import composite as checksum_composite
 from packetary.library.driver import IndexWriter
 from packetary.library.driver import RepoDriver
 from packetary.library.drivers.deb_package import DebPackage
@@ -48,9 +48,9 @@ _DEFAULT_ORIGIN = "Unknown"
 
 _SIZE_ALIGNMENT = 16
 
-_CHECKSUM_ALGO = ['MD5Sum', 'SHA1', 'SHA256']
+_CHECKSUM_METHOD_NAMES = ['MD5Sum', 'SHA1', 'SHA256']
 
-_checksum_collector = multi_checksum('md5', 'sha1', 'sha256')
+_checksum_collector = checksum_composite('md5', 'sha1', 'sha256')
 
 
 def _format_size(size):
@@ -70,7 +70,7 @@ class DebIndexWriter(IndexWriter):
         if self.origin is None:
             self.origin = p.dpkg.get('origin')
 
-    def flush(self, keep_existing=True):
+    def commit(self, keep_existing=True):
         suites = set()
         self.origin = self.origin or _DEFAULT_ORIGIN
         for repo, packages in six.iteritems(self.index):
@@ -178,8 +178,11 @@ class DebIndexWriter(IndexWriter):
                     filepath = os.path.join(root, f)
                     with closing(open(filepath, "rb")) as stream:
                         size = os.fstat(stream.fileno()).st_size
-                        checksum = _checksum_collector(stream)
-                        for n, h in six.moves.zip(_CHECKSUM_ALGO, checksum):
+                        checksum = six.moves.zip(
+                            _CHECKSUM_METHOD_NAMES,
+                            _checksum_collector(stream)
+                        )
+                        for n, h in checksum:
                             index[n].append((
                                 h,
                                 _format_size(size),

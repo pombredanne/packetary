@@ -14,10 +14,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+import six
+
 from packetary.library.context import Context
 from packetary.library.index import Index
 from packetary.library.package import Relation
 from packetary.library.repository import Repository
+
+
+logger = logging.getLogger(__package__)
 
 
 def create_context(options):
@@ -67,6 +73,11 @@ def createmirror(context,
         if len(requires) == 0:
             return 0
         packages = packages.resolve(requires)
+        if len(requires) > 0:
+            logger.warning(
+                "The following depends is unresolved: %s",
+                six.text_type(requires)
+            )
 
     repository.copy_packages(packages, destination, keep_existing)
     return len(packages)
