@@ -200,25 +200,28 @@ class TestDebIndexWriter(base.TestCase):
     def test_updates_global_releases(self, os, open, **_):
         os.path.join = path.join
         os.listdir.return_value = ["main"]
-        os.walk.return_value = [(
-            "/root/dists/trusty/main",
-            [],
-            ["Release", "Packages", "Packages.gz", "test.pkg"]
-        )]
+        os.walk.return_value = [
+            (
+                "/root/dists/trusty/main",
+                [],
+                ["Release", "Packages", "Packages.gz", "test.pkg"]
+            ),
+            (
+                "/root/dists/trusty/restricted",
+                [],
+                ["Release", "Packages", "Packages.gz", "test.pkg"]
+            ),
+        ]
         os.path.isdir.return_value = True
         os.fstat.side_effect = [
             mock.MagicMock(st_size=1),
             mock.MagicMock(st_size=10),
             mock.MagicMock(st_size=10000000000000000),
-        ]
+        ] * 2
 
         meta_stream = six.StringIO()
         open.return_value = mock.MagicMock(write=meta_stream.write)
-        open.return_value.read.side_effect = [
-            b"f1", "",
-            b"f2", "",
-            b"f3", "",
-        ]
+        open.return_value.read.side_effect = [b"data", ""] * 6
         self.writer.origin = "test"
         self.writer._updates_global_releases(["trusty"])
 
@@ -240,14 +243,16 @@ class TestDebIndexWriter(base.TestCase):
             start = content.find(h, end + 1)
             self.assertNotEqual(-1, start)
             start += len(h) + 1
-            for size, name in files:
-                end = content.find("\n", start + 1)
-                expected = "{0}{1} main/{2}".format(
-                    " " * (deb_driver._SIZE_ALIGNMENT - len(size)),
-                    size,
-                    name
-                )
-                self.assertTrue(
-                    content[start:end].endswith(expected)
-                )
-                start = end + 1
+            for comp in ("main", "restricted"):
+                for size, name in files:
+                    end = content.find("\n", start + 1)
+                    expected = "{0}{1} {2}/{3}".format(
+                        " " * (deb_driver._SIZE_ALIGNMENT - len(size)),
+                        size,
+                        comp,
+                        name
+                    )
+                    self.assertTrue(
+                        content[start:end].endswith(expected)
+                    )
+                    start = end + 1
