@@ -21,35 +21,48 @@ from packetary.library import driver
 from packetary.tests.stubs import package
 
 
+
+def gen_relation(pattern, idx, version=None):
+    if pattern is not None:
+        return [
+            package.Relation(
+                pattern.format(idx), package.VersionRange(version)
+            )
+        ]
+    return []
+
+
+def package_generator(count=1, prefix='package',
+                      requires_mask=None,
+                      obsoletes_mask=None,
+                      provides_mask=None,
+                      **kwargs):
+    packages = []
+    for i in six.moves.range(count):
+        requires = gen_relation(requires_mask, i)
+        obsoletes = gen_relation(obsoletes_mask, i, ["le", 2])
+        provides = gen_relation(provides_mask, i, ["gt", 1])
+        packages.append(package.Package(
+            name="{0}-{1}".format(prefix, i),
+            requires=requires,
+            obsoletes=obsoletes,
+            provides=provides,
+            **kwargs
+        ))
+    return packages
+
+
 class RepoDriver(driver.RepoDriver):
-    def __init__(self, *_):
+    def __init__(self, packages_gen=None):
         self.packages = None
         self.index_writer = mock.MagicMock()
+        if packages_gen is None:
+            self.packages_gen = package_generator
+        else:
+            self.packages_gen = packages_gen
 
-    def generate_packages(self, count=1, **kwargs):
-        packages = []
-        for i in six.moves.range(count):
-            requires = [
-                package.Relation(
-                    "package{0}_r".format(i), package.VersionRange())
-            ]
-            obsoletes = [
-                package.Relation(
-                    "package{0}_o".format(i), package.VersionRange("le", 2))
-            ]
-            provides = [
-                package.Relation(
-                    "package{0}_p".format(i), package.VersionRange("gt", 1))
-            ]
-            packages.append(package.Package(
-                name="package%d" % i,
-                requires=requires,
-                obsoletes=obsoletes,
-                provides=provides,
-                **kwargs
-            ))
-
-        self.packages = packages
+    def __call__(self, *_):
+        return self
 
     def parse_urls(self, urls):
         for url in urls:
@@ -62,7 +75,5 @@ class RepoDriver(driver.RepoDriver):
         return self.index_writer
 
     def load(self, baseurl, reponame, consumer):
-        if self.packages is None:
-            self.generate_packages(baseurl=baseurl)
-        for p in self.packages:
+        for p in self.packages_gen(baseurl=baseurl):
             consumer(p)

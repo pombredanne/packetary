@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 import warnings
 
 from packetary.library.context import Context
@@ -72,7 +73,7 @@ def createmirror(context,
         if len(requires) > 0:
             warnings.warn(
                 "The following depends is unresolved: {0}"
-                .format(requires)
+                .format(",".join((six.text_type(x) for x in requires)))
             )
 
     repository.copy_packages(packages, destination, keep_existing)
@@ -87,6 +88,7 @@ def get_packages(context, kind, arch, url, formatter=None):
     :param arch: the target architecture
     :param url: the url(s) of repository
     :param formatter: the output formatter
+    :return: list of packages
     """
 
     repository = Repository(context, kind, arch)
@@ -109,6 +111,7 @@ def get_unresolved_depends(context, kind, arch, url, formatter=None):
     :param arch: the target architecture
     :param url: the url(s) of repository
     :param formatter: the output formatter
+    :return: list of unresolved relations
     """
 
     repository = Repository(context, kind, arch)

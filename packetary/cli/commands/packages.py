@@ -47,7 +47,7 @@ if __name__ == "__main__":
     from packetary.cli.app import test
 
     test(
-        "list",
+        "packages",
         ListPackages,
-        ["list"] + sys.argv[1:] + ["-v", "-v", "--debug"]
+        ["packages"] + sys.argv[1:] + ["-v", "-v", "--debug"]
     )
