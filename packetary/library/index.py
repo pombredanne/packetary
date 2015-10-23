@@ -182,7 +182,9 @@ class Index(object):
             master_find = master.find
 
         for require in _queue_iterator(requires):
-            if master_find(require) is not None:
+            package = master_find(require)
+            if package is not None:
+                requires.update(package.requires)
                 continue
 
             package = self.find(require)

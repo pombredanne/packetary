@@ -53,13 +53,12 @@ class TestAsynchronousSection(base.TestCase):
         )
 
     def test_fail_if_too_many_errors(self, _):
-        for _ in xrange(1000):
-            section = executor.AsynchronousSection(ignore_errors_num=0)
-            section.execute(_raise_value_error)
-            section.wait(ignore_errors=True)
-            with self.assertRaisesRegexp(RuntimeError, "Too many errors"):
-                section.execute(time.sleep, 0)
+        section = executor.AsynchronousSection(ignore_errors_num=0)
+        section.execute(_raise_value_error)
+        section.wait(ignore_errors=True)
+        with self.assertRaisesRegexp(RuntimeError, "Too many errors"):
+            section.execute(time.sleep, 0)
 
-            with self.assertRaisesRegexp(
-                    RuntimeError, "Operations completed with errors"):
-                section.wait(ignore_errors=False)
+        with self.assertRaisesRegexp(
+                RuntimeError, "Operations completed with errors"):
+            section.wait(ignore_errors=False)

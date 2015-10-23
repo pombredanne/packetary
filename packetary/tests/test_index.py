@@ -116,22 +116,24 @@ class TestIndex(base.TestCase):
         self.assertEqual(6, len(index))
 
     def test_resolve_with_master(self):
-        index1 = Index()
-        index2 = Index()
+        master = Index()
+        slave = Index()
         shared_package = package_generator(prefix="test")[0]
-        index1.add(shared_package)
-        index2.add(shared_package)
-        index1.add(package_generator(
+        shared_package.requires.append(Relation("unresolved"))
+        master.add(shared_package)
+        slave.add(shared_package)
+        master.add(package_generator(
             prefix="test1", requires_mask="requires-{0}")[0]
         )
         required_package = package_generator(
             prefix="requires", requires_mask="test-{0}"
         )[0]
-        index2.add(required_package)
-        unresolved = index1.get_unresolved()
-        packages = index2.resolve(unresolved, index1)
+        slave.add(required_package)
+        unresolved = master.get_unresolved()
+        packages = slave.resolve(unresolved, master)
         self.assertItemsEqual([required_package], packages)
-        self.assertEqual(0, len(unresolved))
+        self.assertEqual(1, len(unresolved))
+        self.assertEqual("unresolved", unresolved.pop().name)
 
     def test_resolve(self):
         index = Index()
