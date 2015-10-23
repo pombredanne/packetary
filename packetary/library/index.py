@@ -164,17 +164,26 @@ class Index(object):
                     unresolved.add(d)
         return unresolved
 
-    def resolve(self, requires):
-        """Resolves depends.
+    def resolve(self, requires, master=None):
+        """Resolves requirements.
 
         :param requires: the set of requirements.
             Note. This parameter will be updated.
+        :param master: packages from master is skipped
         :returns: The set of resolved depends.
         """
 
         unresolved = set()
         resolved = set()
+        if master is None:
+            master_find = lambda _: None
+        else:
+            master_find = master.find
+
         for require in _queue_iterator(requires):
+            if master_find(require) is not None:
+                continue
+
             package = self.find(require)
             if package is not None:
                 resolved.add(package)
@@ -183,22 +192,6 @@ class Index(object):
                 unresolved.add(require)
 
         requires.update(unresolved)
-        return resolved
-
-    def get_requires(self, other, unresolved):
-        """Gets the all packages that is required by other."""
-        requires = other.get_unresolved()
-        resolved = set()
-        for require in _queue_iterator(requires):
-            package = other.find(require)
-            if package is not None:
-                continue
-            package = self.find(require)
-            if package is not None:
-                resolved.add(package)
-                requires.update(package.requires)
-            else:
-                unresolved.add(require)
         return resolved
 
     def _resolve_relation(self, relations, relation):

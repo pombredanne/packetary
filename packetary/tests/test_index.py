@@ -115,7 +115,7 @@ class TestIndex(base.TestCase):
             index.add(p)
         self.assertEqual(6, len(index))
 
-    def test_get_requires(self):
+    def test_resolve_with_master(self):
         index1 = Index()
         index2 = Index()
         shared_package = package_generator(prefix="test")[0]
@@ -128,25 +128,10 @@ class TestIndex(base.TestCase):
             prefix="requires", requires_mask="test-{0}"
         )[0]
         index2.add(required_package)
-        unresolved = set()
-        packages = index2.get_requires(index1, unresolved)
+        unresolved = index1.get_unresolved()
+        packages = index2.resolve(unresolved, index1)
         self.assertItemsEqual([required_package], packages)
         self.assertEqual(0, len(unresolved))
-
-    def test_get_unresolved(self):
-        index = Index()
-        index.add(package_generator(
-            prefix="test1", requires_mask="requires-{0}")[0]
-        )
-        index.add(package_generator(
-            prefix="test2", requires_mask="test1-{0}")[0]
-        )
-        index.add(package_generator(
-            prefix="test3", requires_mask="requires-{0}")[0]
-        )
-        unresolved = index.get_unresolved()
-        self.assertEqual(1, len(unresolved))
-        self.assertEqual("requires-0", unresolved.pop().package)
 
     def test_resolve(self):
         index = Index()
@@ -166,5 +151,20 @@ class TestIndex(base.TestCase):
             ["test2-0", "test1-0"],
             (x.name for x in resolved)
         )
+        self.assertEqual(1, len(unresolved))
+        self.assertEqual("requires-0", unresolved.pop().package)
+
+    def test_get_unresolved(self):
+        index = Index()
+        index.add(package_generator(
+            prefix="test1", requires_mask="requires-{0}")[0]
+        )
+        index.add(package_generator(
+            prefix="test2", requires_mask="test1-{0}")[0]
+        )
+        index.add(package_generator(
+            prefix="test3", requires_mask="requires-{0}")[0]
+        )
+        unresolved = index.get_unresolved()
         self.assertEqual(1, len(unresolved))
         self.assertEqual("requires-0", unresolved.pop().package)
