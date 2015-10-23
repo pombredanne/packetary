@@ -18,32 +18,29 @@ from __future__ import with_statement
 
 import logging
 import six
-import threading
 
-from concurrent import futures
+from eventlet.greenpool import GreenPool
 
 
 logger = logging.getLogger(__package__)
-
-Executor = futures.ThreadPoolExecutor
 
 
 class AsynchronousSection(object):
     """Allows calling function asynchronously with waiting on exit."""
 
-    def __init__(self, executor, max_queue=0, ignore_errors_num=0):
+    MIN_POOL_SIZE = 1
+
+    def __init__(self, size=0, ignore_errors_num=0):
         """Initialises.
 
-        :param executor: the futures.Executor instance
+        :param size: the max number of parallel tasks
         :param ignore_errors_num:
                number of errors which does not stop the execution
         """
-        self.executor = executor
+
+        self.executor = GreenPool(max(size, self.MIN_POOL_SIZE))
         self.ignore_errors_num = ignore_errors_num
-        self.max_queue = max_queue
         self.errors = 0
-        self.mutex = threading.Lock()
-        self.condition = threading.Condition(self.mutex)
         self.tasks = set()
 
     def __enter__(self):
@@ -55,48 +52,30 @@ class AsynchronousSection(object):
 
     def execute(self, func, *args, **kwargs):
         """Calls function asynchronously."""
-
-        if 0 < self.max_queue:
-            with self.condition:
-                while self.max_queue < len(self.tasks):
-                    self.condition.wait()
-
         if 0 <= self.ignore_errors_num < self.errors:
             raise RuntimeError("Too many errors.")
 
-        fut = self.executor.submit(func, *args, **kwargs)
-        self.tasks.add(fut)
-        fut.add_done_callback(self.on_complete)
+        gt = self.executor.spawn(func, *args, **kwargs)
+        self.tasks.add(gt)
+        gt.link(self.on_complete)
 
-    def on_complete(self, fut):
+    def on_complete(self, gt):
         """Callback to handle task completion."""
 
         try:
-            fut.result()
-            delta = 0
+            gt.wait()
         except Exception as e:
-            delta = 1
-            logger.exception(
-                "Task failed: %s", six.text_type(e),
-            )
-
-        with self.condition:
-            self.errors += delta
-            self.tasks.discard(fut)
-            self.condition.notify_all()
+            self.errors += 1
+            logger.exception("Task failed: %s", six.text_type(e))
+        finally:
+            self.tasks.discard(gt)
 
     def wait(self, ignore_errors=False):
         """Waits until all tasks will be completed.
 
-        Do not use directly, will called from context manager.
+        Do not use directly, will be called from context manager.
         """
-        futures.wait(self.tasks, return_when=futures.ALL_COMPLETED)
-
-        # synchronise with callbacks
-        with self.condition:
-            while len(self.tasks) > 0:
-                self.condition.wait()
-
+        self.executor.waitall()
         if not ignore_errors and self.errors > 0:
             raise RuntimeError(
                 "Operations completed with errors. See log for more details."

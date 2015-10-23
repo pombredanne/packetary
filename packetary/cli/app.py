@@ -54,13 +54,6 @@ class Application(app.App):
             help="The number of threads."
         )
         parser.add_argument(
-            "--backlog-size",
-            default=3,
-            type=int,
-            metavar="NUMBER",
-            help="The size of backlog for tasks."
-        )
-        parser.add_argument(
             "--connection-count",
             default=2,
             type=int,

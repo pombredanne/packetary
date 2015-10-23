@@ -15,7 +15,6 @@
 #    under the License.
 
 import mock
-import six
 import threading
 import time
 
@@ -31,12 +30,11 @@ def _raise_value_error(*_):
 class TestAsynchronousSection(base.TestCase):
     def setUp(self):
         super(TestAsynchronousSection, self).setUp()
-        self.executor = executor.Executor(max_workers=2)
         self.results = []
 
     def test_isolation(self, _):
-        section1 = executor.AsynchronousSection(self.executor)
-        section2 = executor.AsynchronousSection(self.executor)
+        section1 = executor.AsynchronousSection()
+        section2 = executor.AsynchronousSection()
         event = threading.Event()
         section1.execute(event.wait)
         section2.execute(time.sleep, 0)
@@ -45,7 +43,7 @@ class TestAsynchronousSection(base.TestCase):
         section1.wait()
 
     def test_ignore_errors(self, logger):
-        section = executor.AsynchronousSection(self.executor, 0, 1)
+        section = executor.AsynchronousSection(ignore_errors_num=1)
         section.execute(_raise_value_error)
         section.execute(time.sleep, 0)
         section.wait(ignore_errors=True)
@@ -55,21 +53,13 @@ class TestAsynchronousSection(base.TestCase):
         )
 
     def test_fail_if_too_many_errors(self, _):
-        section = executor.AsynchronousSection(
-            self.executor, ignore_errors_num=0
-        )
-        section.execute(_raise_value_error)
-        section.wait(ignore_errors=True)
-        with self.assertRaisesRegexp(RuntimeError, "Too many errors"):
-            section.execute(time.sleep, 0)
-
-        with self.assertRaisesRegexp(
-                RuntimeError, "Operations completed with errors"):
-            section.wait(ignore_errors=False)
-
-    def test_limits(self, _):
-        with executor.AsynchronousSection(self.executor, 2) as section:
-            for _ in six.moves.range(10):
+        for _ in xrange(1000):
+            section = executor.AsynchronousSection(ignore_errors_num=0)
+            section.execute(_raise_value_error)
+            section.wait(ignore_errors=True)
+            with self.assertRaisesRegexp(RuntimeError, "Too many errors"):
                 section.execute(time.sleep, 0)
-            # the queue limit is max_size + 1
-            self.assertLessEqual(len(section.tasks), 3)
+
+            with self.assertRaisesRegexp(
+                    RuntimeError, "Operations completed with errors"):
+                section.wait(ignore_errors=False)

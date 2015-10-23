@@ -32,13 +32,11 @@ def mock_factory(*args, **kwargs):
 @mock.patch.multiple(
     "packetary.library.context",
     ConnectionsPool=mock_factory,
-    Executor=mock_factory
 )
 class TestCliCommands(base.TestCase):
     common_argv = [
         "--ignore-error-count=3",
         "--thread-count=8",
-        "--backlog-size=200",
         "--connection-count=4",
         "--retry-count=10",
         "--connection-proxy=http://proxy",
@@ -72,8 +70,7 @@ class TestCliCommands(base.TestCase):
 
     def check_context(self, context):
         self.assertEqual(3, context.ignore_errors_num)
-        self.assertEqual(200, context.backlog_size)
-        context.executor.assert_called_once_with(8)
+        self.assertEqual(8, context.thread_count)
         context.connections.assert_called_once_with(
             count=4,
             retries_num=10,

@@ -15,7 +15,6 @@
 #    under the License.
 
 import abc
-import signal
 
 from cliff import command
 import six
@@ -70,12 +69,10 @@ class BaseRepoCommand(command.Command):
         :return: the result of take_repo_action
         :rtype: object
         """
-        with create_context(**self.app_args.__dict__) as context:
-            signal.signal(signal.SIGTERM, lambda *_: context.shutdown(False))
-            return self.take_repo_action(
-                context,
-                parsed_args
-            )
+        return self.take_repo_action(
+            create_context(**self.app_args.__dict__),
+            parsed_args
+        )
 
     @abc.abstractmethod
     def take_repo_action(self, context, parsed_args):

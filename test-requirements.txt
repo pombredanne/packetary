@@ -9,7 +9,7 @@ chardet>=2.3.0
 cliff>=1.7.0
 coverage>=3.6
 discover
-futures>=3.0.3
+eventlet>=0.15
 hacking>=0.10.0
 lxml>=3.2
 mock>=1.0.1
