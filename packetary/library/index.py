@@ -185,6 +185,22 @@ class Index(object):
         requires.update(unresolved)
         return resolved
 
+    def get_requires(self, other, unresolved):
+        """Gets the all packages that is required by other."""
+        requires = other.get_unresolved()
+        resolved = set()
+        for require in _queue_iterator(requires):
+            package = other.find(require)
+            if package is not None:
+                continue
+            package = self.find(require)
+            if package is not None:
+                resolved.add(package)
+                requires.update(package.requires)
+            else:
+                unresolved.add(require)
+        return resolved
+
     def _resolve_relation(self, relations, relation):
         """Resolve relation according to relations map."""
         for key, candidate in relations.iter_items(reverse=True):

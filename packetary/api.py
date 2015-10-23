@@ -51,30 +51,30 @@ def createmirror(context,
     """
 
     repository = Repository(context, kind, arch)
-    packages = Index()
-    repository.load_packages(origin, packages.add)
-    requires = None
+    packages = None
+    unresolved = set()
+    origin_packages = Index()
+    repository.load_packages(origin, origin_packages.add)
     if debs is not None:
-        requires = Index()
-        repository.load_packages(debs, requires.add)
-        requires = requires.get_unresolved()
+        debs_packages = Index()
+        repository.load_packages(debs, debs_packages.add)
+        packages = origin_packages.get_requires(debs_packages, unresolved)
 
     if bootstrap is not None:
-        if requires is None:
-            requires = set()
+        if packages is None:
+            packages = set()
+        requires = set(Relation(r.split()) for r in bootstrap)
+        packages |= origin_packages.resolve(requires)
+        unresolved |= requires
 
-        for p in bootstrap:
-            requires.add(Relation(p.split()))
+    if len(unresolved) > 0:
+        warnings.warn(
+            "The following depends is unresolved: {0}"
+            .format(",".join((six.text_type(x) for x in unresolved)))
+        )
 
-    if requires is not None:
-        if len(requires) == 0:
-            return 0
-        packages = packages.resolve(requires)
-        if len(requires) > 0:
-            warnings.warn(
-                "The following depends is unresolved: {0}"
-                .format(",".join((six.text_type(x) for x in requires)))
-            )
+    if packages is None:
+        packages = origin_packages
 
     repository.copy_packages(packages, destination, keep_existing)
     return len(packages)
