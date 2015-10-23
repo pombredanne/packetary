@@ -19,12 +19,17 @@ import os
 import six
 import six.moves.urllib.request as urllib_request
 import six.moves.urllib_error as urllib_error
+import six.moves.http_client as http_client
 import time
+
 
 from packetary.library.streams import StreamWrapper
 
 
 logger = logging.getLogger(__package__)
+
+
+RETRYABLE_ERRORS = (http_client.HTTPException, IOError)
 
 
 class RangeError(urllib_error.URLError):
@@ -49,7 +54,7 @@ class ResumeableStream(StreamWrapper):
                 chunk = self.stream.read(chunksize)
                 self.request.offset += len(chunk)
                 return chunk
-            except IOError as e:
+            except RETRYABLE_ERRORS as e:
                 response = self.opener.error(
                     self.request.get_type(), self.request,
                     self.stream, 502, six.text_type(e), self.stream.info()
@@ -117,7 +122,7 @@ class Connection(object):
                 return self.opener.open(request)
             except (RangeError, urllib_error.HTTPError):
                 raise
-            except IOError as e:
+            except RETRYABLE_ERRORS as e:
                 if request.retries_left <= 0:
                     raise
                 request.retries_left -= 1

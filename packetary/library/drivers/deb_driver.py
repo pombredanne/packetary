@@ -17,6 +17,7 @@ from collections import defaultdict
 from contextlib import closing
 from datetime import datetime
 from debian import deb822
+from debian import deb822
 import fcntl
 import gzip
 import logging
