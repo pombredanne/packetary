@@ -16,10 +16,10 @@
 
 import mock
 
-from packetary.tests import base
 from packetary.cli.commands import mirror
-from packetary.cli.commands import unresolved
-from packetary.cli.commands import packages
+from packetary.tests import base
+# from packetary.cli.commands import unresolved
+# from packetary.cli.commands import packages
 
 
 class TestCli(base.TestCase):

@@ -55,17 +55,18 @@ def createmirror(context,
     unresolved = set()
     origin_packages = Index()
     repository.load_packages(origin, origin_packages.add)
+    master_packages = None
     if debs is not None:
-        debs_packages = Index()
-        repository.load_packages(debs, debs_packages.add)
-        debs_packages.get_unresolved(unresolved)
-        packages = origin_packages.resolve(unresolved, debs_packages)
+        master_packages = Index()
+        repository.load_packages(debs, master_packages.add)
+        master_packages.get_unresolved(unresolved)
+        packages = origin_packages.resolve(unresolved, master_packages)
 
     if bootstrap is not None:
         if packages is None:
             packages = set()
         requires = set(Relation(r.split()) for r in bootstrap)
-        packages |= origin_packages.resolve(requires)
+        packages |= origin_packages.resolve(requires, master_packages)
         unresolved |= requires
 
     if len(unresolved) > 0:

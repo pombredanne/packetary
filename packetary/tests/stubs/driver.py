@@ -21,7 +21,6 @@ from packetary.library import driver
 from packetary.tests.stubs import package
 
 
-
 def gen_relation(pattern, idx, version=None):
     if pattern is not None:
         return [
