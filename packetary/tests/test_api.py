@@ -50,7 +50,8 @@ class TestApi(base.TestCase):
             "target",
             "file:///origin",
             "file:///debs",
-            ["requires-1"],
+            ["requires-1",
+             "package-0"],
             True
         )
         repo_class.assert_called_once_with(
