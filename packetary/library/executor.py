@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import with_statement
+
 import logging
 import six
 import threading
@@ -54,20 +56,17 @@ class AsynchronousSection(object):
     def execute(self, func, *args, **kwargs):
         """Calls function asynchronously."""
 
+        if 0 < self.max_queue:
+            with self.condition:
+                while self.max_queue < len(self.tasks):
+                    self.condition.wait()
+
         if 0 <= self.ignore_errors_num < self.errors:
             raise RuntimeError("Too many errors.")
 
-        if 0 < self.max_queue:
-            self.condition.acquire()
-            try:
-                while self.max_queue < len(self.tasks):
-                    self.condition.wait()
-            finally:
-                self.condition.release()
-
         fut = self.executor.submit(func, *args, **kwargs)
-        fut.add_done_callback(self.on_complete)
         self.tasks.add(fut)
+        fut.add_done_callback(self.on_complete)
 
     def on_complete(self, fut):
         """Callback to handle task completion."""
@@ -81,14 +80,10 @@ class AsynchronousSection(object):
                 "Task failed: %s", six.text_type(e),
             )
 
-        self.tasks.discard(fut)
-
-        self.condition.acquire()
-        try:
-            self.condition.notify()
+        with self.condition:
             self.errors += delta
-        finally:
-            self.condition.release()
+            self.tasks.discard(fut)
+            self.condition.notify_all()
 
     def wait(self, ignore_errors=False):
         """Waits until all tasks will be completed.
@@ -96,6 +91,11 @@ class AsynchronousSection(object):
         Do not use directly, will called from context manager.
         """
         futures.wait(self.tasks, return_when=futures.ALL_COMPLETED)
+
+        # synchronise with callbacks
+        with self.condition:
+            while len(self.tasks) > 0:
+                self.condition.wait()
 
         if not ignore_errors and self.errors > 0:
             raise RuntimeError(
