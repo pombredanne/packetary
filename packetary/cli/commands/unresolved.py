@@ -21,9 +21,9 @@ from packetary.cli.commands.utils import make_display_attr_getter
 
 class ListUnresolved(BaseProduceOutputCommand):
     columns = (
-        "package",
+        "name",
         "version",
-        "choice",
+        "option",
     )
 
     def take_repo_action(self, context, parsed_args):

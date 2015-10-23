@@ -134,7 +134,7 @@ class TestApi(base.TestCase):
         )
         unresolved = iter(api.get_unresolved_depends(
             self.context, "test", "x86_64", "http://localhost",
-            formatter=lambda x: x.package
+            formatter=lambda x: x.name
         ))
         self.assertEqual(
             "requires-0",

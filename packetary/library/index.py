@@ -111,21 +111,21 @@ class Index(object):
         @:returns: the package if it is found, otherwise None
         """
 
-        if relation.package in self.packages:
+        if relation.name in self.packages:
             p = self._find_version(
-                self.packages[relation.package], relation.version
+                self.packages[relation.name], relation.version
             )
             if p is not None:
                 return p
 
-        if relation.package in self.obsoletes:
+        if relation.name in self.obsoletes:
             return self._resolve_relation(
-                self.obsoletes[relation.package], relation
+                self.obsoletes[relation.name], relation
             )
 
-        if relation.package in self.provides:
+        if relation.name in self.provides:
             return self._resolve_relation(
-                self.provides[relation.package], relation
+                self.provides[relation.name], relation
             )
 
     def add(self, package):
@@ -134,10 +134,10 @@ class Index(object):
         key = package.name, package.version
 
         for obsolete in package.obsoletes:
-            self.obsoletes[obsolete.package][key] = obsolete
+            self.obsoletes[obsolete.name][key] = obsolete
 
         for provide in package.provides:
-            self.provides[provide.package][key] = provide
+            self.provides[provide.name][key] = provide
 
     def get_unresolved(self, unresolved=None):
         """Gets the unresolved packages.
@@ -152,15 +152,16 @@ class Index(object):
 
         for package in self.get_packages():
             for d in package.requires:
-                if d in unresolved:
-                    break
-                choice = d
-                while choice is not None:
-                    if self.find(choice) is not None:
-                        break
-                    choice = choice.choice
+                if d not in unresolved:
+                    rel = d
+                    while rel is not None:
+                        if self.find(rel) is not None:
+                            break
+                        rel = rel.option
+                else:
+                    rel = None
 
-                if choice is None:
+                if rel is None:
                     unresolved.add(d)
         return unresolved
 
@@ -205,10 +206,10 @@ class Index(object):
     def _find_version(versions, version):
         """Finds concrete version by relation."""
         try:
-            op = Index.operators[version.opname]
+            op = Index.operators[version.op]
         except KeyError:
             raise ValueError(
                 "Undefined operation for versions relation: {0}"
-                .format(version.opname)
+                .format(version.op)
             )
         return op(versions, version.value)

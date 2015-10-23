@@ -103,31 +103,29 @@ class Package(object):
 
 
 _RelationBase = collections.namedtuple(
-    "Relation", ("package", "version", "choice")
+    "Relation", ("name", "version", "option")
 )
 
 
 _VersionRangeBase = collections.namedtuple(
-    "_VersionRangeBase", ("opname", "value")
+    "_VersionRangeBase", ("op", "value")
 )
 
 
 class VersionRange(_VersionRangeBase):
     """Describes version in package`s relation."""
 
-    def __new__(cls, opname=None, value=None):
-        if isinstance(opname, (list, tuple)):
-            if len(opname) > 1:
-                value = opname[1]
-                opname = opname[0]
-            else:
-                opname = opname[0]
+    def __new__(cls, op=None, value=None):
+        if isinstance(op, (list, tuple)):
+            if len(op) > 1:
+                value = op[1]
+            op = op[0]
 
-        return _VersionRangeBase.__new__(cls, opname, value)
+        return _VersionRangeBase.__new__(cls, op, value)
 
     def __str__(self):
         if self.value is not None:
-            return "%s %s" % (self.opname, self.value)
+            return "%s %s" % (self.op, self.value)
         return "any"
 
     def has_intersection(self, other):
@@ -136,48 +134,48 @@ class VersionRange(_VersionRangeBase):
                 "Unordered type <type 'VersionRelation'> and %s" % type(other)
             )
 
-        if self.opname is None or other.opname is None:
+        if self.op is None or other.op is None:
             return True
 
-        op1 = getattr(operator, self.opname)
-        op2 = getattr(operator, other.opname)
-        if self.opname[0] == other.opname[0]:
-            if self.opname[0] == 'l':
+        my_op = getattr(operator, self.op)
+        other_op = getattr(operator, other.op)
+        if self.op[0] == other.op[0]:
+            if self.op[0] == 'l':
                 if self.value < other.value:
-                    return op1(self.value, other.value)
-                return op2(other.value, self.value)
-            elif self.opname[0] == 'g':
+                    return my_op(self.value, other.value)
+                return other_op(other.value, self.value)
+            elif self.op[0] == 'g':
                 if self.value > other.value:
-                    return op1(self.value, other.value)
-                return op2(other.value, self.value)
+                    return my_op(self.value, other.value)
+                return other_op(other.value, self.value)
 
-        if self.opname == 'eq':
-            return op2(self.value, other.value)
+        if self.op == 'eq':
+            return other_op(self.value, other.value)
 
-        if other.opname == 'eq':
-            return op1(other.value, self.value)
+        if other.op == 'eq':
+            return my_op(other.value, self.value)
 
         return (
-            op1(other.value, self.value) and
-            op2(self.value, other.value)
+            my_op(other.value, self.value) and
+            other_op(self.value, other.value)
         )
 
 
 class Relation(_RelationBase):
     """Describes the package`s relation."""
 
-    def __new__(cls, package, version=None, choice=None):
-        if isinstance(package, (list, tuple)):
-            if len(package) > 1:
-                version = VersionRange(package[1:3])
-            if len(package) > 3:
-                choice = Relation(package[3:])
-            package = package[0]
+    def __new__(cls, name, version=None, option=None):
+        if isinstance(name, (list, tuple)):
+            if len(name) > 1:
+                version = VersionRange(name[1:3])
+            if len(name) > 3:
+                option = Relation(name[3:])
+            name = name[0]
         if version is None:
             version = VersionRange()
-        return _RelationBase.__new__(cls, package, version, choice)
+        return _RelationBase.__new__(cls, name, version, option)
 
     def __str__(self):
-        if self.choice:
-            return "%s (%s) | %s" % (self.package, self.version, self.choice)
-        return "%s (%s)" % (self.package, self.version)
+        if self.option:
+            return "%s (%s) | %s" % (self.name, self.version, self.option)
+        return "%s (%s)" % (self.name, self.version)

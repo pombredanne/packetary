@@ -152,19 +152,24 @@ class TestIndex(base.TestCase):
             (x.name for x in resolved)
         )
         self.assertEqual(1, len(unresolved))
-        self.assertEqual("requires-0", unresolved.pop().package)
+        self.assertEqual("requires-0", unresolved.pop().name)
 
     def test_get_unresolved(self):
         index = Index()
-        index.add(package_generator(
-            prefix="test1", requires_mask="requires-{0}")[0]
+        index.add(
+            package_generator(prefix="test1", requires_mask="requires-{0}")[0]
         )
         index.add(package_generator(
             prefix="test2", requires_mask="test1-{0}")[0]
         )
-        index.add(package_generator(
-            prefix="test3", requires_mask="requires-{0}")[0]
-        )
+        package = package_generator(
+            prefix="test3", requires_mask="requires-{0}"
+        )[0]
+        package.requires.append(Relation("requires-1"))
+        index.add(package)
         unresolved = index.get_unresolved()
-        self.assertEqual(1, len(unresolved))
-        self.assertEqual("requires-0", unresolved.pop().package)
+        self.assertEqual(2, len(unresolved))
+        self.assertItemsEqual(
+            ["requires-0", "requires-1"],
+            [x.name for x in unresolved]
+        )
