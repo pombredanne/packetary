@@ -21,15 +21,23 @@ from packetary.library.executor import Executor
 
 class Context(object):
 
+    DEFAULT_THREADS_COUNT = 1
+    DEFAULT_BACKLOG_SIZE = 100
+
     def __init__(self, **kwargs):
-        self.executor = Executor(kwargs.get("threads_count", 1))
+        self.executor = Executor(
+            kwargs.get("thread_count", self.DEFAULT_THREADS_COUNT)
+        )
         self.connections = ConnectionsPool(
-            count=kwargs.get("connections_count", 0),
-            retries_num=kwargs.get("retries_count", 0),
+            count=kwargs.get("connection_count", 0),
+            retries_num=kwargs.get("retry_count", 0),
             proxy=kwargs.get("connection_proxy"),
             secure_proxy=kwargs.get("connection_secure_proxy")
         )
-        self.ignore_errors_num = kwargs.get('ignore_errors_count', 0)
+        self.ignore_errors_num = kwargs.get('ignore_error_count', 0)
+        self.backlog_size = kwargs.get(
+            'backlog_size', self.DEFAULT_BACKLOG_SIZE
+        )
 
     def __enter__(self):
         return self
@@ -42,7 +50,7 @@ class Context(object):
         if ignore_errors_num is None:
             ignore_errors_num = self.ignore_errors_num
 
-        return AsynchronousSection(self.executor, ignore_errors_num)
+        return AsynchronousSection(self.executor, self.backlog_size, ignore_errors_num)
 
     def shutdown(self, wait=True):
         """Stops the execution."""

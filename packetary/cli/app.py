@@ -33,14 +33,14 @@ class Application(app.App):
                                             argparse_kwargs=argparse_kwargs)
 
         parser.add_argument(
-            "--ignore-errors-count",
+            "--ignore-error-count",
             type=int,
             default=2,
             metavar="NUMBER",
             help="The number of errors that can be ignored."
         )
         parser.add_argument(
-            "--retries-count",
+            "--retry-count",
             type=int,
             default=5,
             metavar="NUMBER",
@@ -52,6 +52,13 @@ class Application(app.App):
             type=int,
             metavar="NUMBER",
             help="The number of threads."
+        )
+        parser.add_argument(
+            "--backlog-size",
+            default=3,
+            type=int,
+            metavar="NUMBER",
+            help="The size of backlog for tasks."
         )
         parser.add_argument(
             "--connection-count",
@@ -69,7 +76,7 @@ class Application(app.App):
         parser.add_argument(
             "--connection-secure-proxy",
             default=None,
-            metavar="http://username:password@proxy_host:proxy_port",
+            metavar="https://username:password@proxy_host:proxy_port",
             help="The https proxy url."
         )
         return parser
