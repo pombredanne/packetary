@@ -17,11 +17,9 @@
 import mock
 
 from packetary.cli.commands import mirror
-from packetary.tests import base
-from packetary.cli.commands import unresolved
 from packetary.cli.commands import packages
-
-
+from packetary.cli.commands import unresolved
+from packetary.tests import base
 
 
 def mock_factory(*args, **kwargs):

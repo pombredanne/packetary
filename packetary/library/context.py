@@ -50,7 +50,9 @@ class Context(object):
         if ignore_errors_num is None:
             ignore_errors_num = self.ignore_errors_num
 
-        return AsynchronousSection(self.executor, self.backlog_size, ignore_errors_num)
+        return AsynchronousSection(
+            self.executor, self.backlog_size, ignore_errors_num
+        )
 
     def shutdown(self, wait=True):
         """Stops the execution."""
