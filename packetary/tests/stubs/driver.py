@@ -54,7 +54,6 @@ def package_generator(count=1, prefix='package',
 
 class RepoDriver(driver.RepoDriver):
     def __init__(self, packages_gen=None):
-        self.packages = None
         self.index_writer = mock.MagicMock()
         if packages_gen is None:
             self.packages_gen = package_generator

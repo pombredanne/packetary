@@ -15,6 +15,7 @@
 #    under the License.
 
 import mock
+import six
 import threading
 import time
 
@@ -34,32 +35,39 @@ class TestAsynchronousSection(base.TestCase):
         self.results = []
 
     def test_isolation(self, _):
-        scope1 = executor.AsynchronousSection(self.executor, 0)
-        scope2 = executor.AsynchronousSection(self.executor, 0)
+        section1 = executor.AsynchronousSection(self.executor)
+        section2 = executor.AsynchronousSection(self.executor)
         event = threading.Event()
-        scope1.execute(event.wait)
-        scope2.execute(time.sleep, 0)
-        scope2.wait()
+        section1.execute(event.wait)
+        section2.execute(time.sleep, 0)
+        section2.wait()
         event.set()
-        scope1.wait()
+        section1.wait()
 
     def test_ignore_errors(self, logger):
-        scope = executor.AsynchronousSection(self.executor, 1)
-        scope.execute(_raise_value_error)
-        scope.execute(time.sleep, 0)
-        scope.wait(ignore_errors=True)
-        self.assertEqual(1, scope.errors)
+        section = executor.AsynchronousSection(self.executor, 0, 1)
+        section.execute(_raise_value_error)
+        section.execute(time.sleep, 0)
+        section.wait(ignore_errors=True)
+        self.assertEqual(1, section.errors)
         logger.exception.assert_called_with(
             "Task failed: %s", "error"
         )
 
     def test_fail_if_too_many_errors(self, _):
-        scope = executor.AsynchronousSection(self.executor, 0)
-        scope.execute(_raise_value_error)
-        scope.wait(ignore_errors=True)
+        section = executor.AsynchronousSection(self.executor)
+        section.execute(_raise_value_error)
+        section.wait(ignore_errors=True)
         with self.assertRaisesRegexp(RuntimeError, "Too many errors"):
-            scope.execute(_raise_value_error)
+            section.execute(_raise_value_error)
 
         with self.assertRaisesRegexp(
                 RuntimeError, "Operations completed with errors"):
-            scope.wait(ignore_errors=False)
+            section.wait(ignore_errors=False)
+
+    def test_limits(self, _):
+        with executor.AsynchronousSection(self.executor, 2) as section:
+            for _ in six.moves.range(10):
+                section.execute(time.sleep, 0)
+            # the queue limit is max_size + 1
+            self.assertLessEqual(len(section.tasks), 3)

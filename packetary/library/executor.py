@@ -29,18 +29,20 @@ Executor = futures.ThreadPoolExecutor
 class AsynchronousSection(object):
     """Allows calling function asynchronously with waiting on exit."""
 
-    def __init__(self, executor, ignore_errors_num):
+    def __init__(self, executor, max_queue=0, ignore_errors_num=0):
         """Initialises.
 
         :param executor: the futures.Executor instance
         :param ignore_errors_num:
                number of errors which does not stop the execution
         """
-        self.errors = 0
         self.executor = executor
         self.ignore_errors_num = ignore_errors_num
+        self.max_queue = max_queue
+        self.errors = 0
         self.mutex = threading.Lock()
-        self.tasks = []
+        self.condition = threading.Condition(self.mutex)
+        self.tasks = set()
 
     def __enter__(self):
         self.errors = 0
@@ -55,27 +57,38 @@ class AsynchronousSection(object):
         if 0 <= self.ignore_errors_num < self.errors:
             raise RuntimeError("Too many errors.")
 
+        if 0 < self.max_queue:
+            self.condition.acquire()
+            try:
+                while self.max_queue < len(self.tasks):
+                    self.condition.wait()
+            finally:
+                self.condition.release()
+
         fut = self.executor.submit(func, *args, **kwargs)
         fut.add_done_callback(self.on_complete)
-        self.tasks.append(fut)
+        self.tasks.add(fut)
 
     def on_complete(self, fut):
         """Callback to handle task completion."""
 
         try:
             fut.result()
+            delta = 0
         except Exception as e:
-            self.mutex.acquire()
-            try:
-                self.errors += 1
-            finally:
-                self.mutex.release()
-
+            delta = 1
             logger.exception(
                 "Task failed: %s", six.text_type(e),
             )
 
-        self.tasks.remove(fut)
+        self.tasks.discard(fut)
+
+        self.condition.acquire()
+        try:
+            self.condition.notify()
+            self.errors += delta
+        finally:
+            self.condition.release()
 
     def wait(self, ignore_errors=False):
         """Waits until all tasks will be completed.
@@ -83,7 +96,6 @@ class AsynchronousSection(object):
         Do not use directly, will called from context manager.
         """
         futures.wait(self.tasks, return_when=futures.ALL_COMPLETED)
-        self.tasks[:] = []
 
         if not ignore_errors and self.errors > 0:
             raise RuntimeError(

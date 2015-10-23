@@ -20,30 +20,30 @@ import six
 from packetary.library.repository import Repository
 from packetary.tests import base
 from packetary.tests.stubs.context import Context
+from packetary.tests.stubs.driver import package_generator
 from packetary.tests.stubs.driver import RepoDriver
 
 
 class TestRepository(base.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(TestRepository, cls).setUpClass()
-        cls.repo = Repository(
+    def setUp(self):
+        super(TestRepository, self).setUp()
+        self.packages = package_generator(4, size=10)
+        self.repo = Repository(
             Context(),
             "stub",
             "x86_64",
-            drivers=mock.MagicMock(stub=RepoDriver)
+            drivers=mock.MagicMock(stub=RepoDriver(lambda **_: self.packages))
         )
 
     def test_load_packages(self):
         url = "url1"
         packages = list()
         self.repo.load_packages(url, packages.append)
-        self.assertEqual(packages, self.repo.driver.packages)
+        self.assertEqual(packages, self.packages)
 
     @mock.patch("packetary.library.repository.os")
     def test_copy_packages(self, os):
-        self.repo.driver.generate_packages(4, size=10)
-        packages = self.repo.driver.packages
+        packages = self.packages
         os.stat.side_effect = [
             mock.MagicMock(st_size=packages[0].size),
             mock.MagicMock(st_size=packages[1].size + 1),
