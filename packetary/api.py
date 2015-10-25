@@ -51,23 +51,22 @@ def createmirror(context,
     """
 
     repository = Repository(context, kind, arch)
-    packages = None
-    unresolved = set()
     origin_packages = Index()
     repository.load_packages(origin, origin_packages.add)
-    master_packages = None
-    if debs is not None:
-        master_packages = Index()
-        repository.load_packages(debs, master_packages.add)
-        master_packages.get_unresolved(unresolved)
-        packages = origin_packages.resolve(unresolved, master_packages)
-
+    unresolved = set()
     if bootstrap is not None:
-        if packages is None:
-            packages = set()
-        requires = set(Relation(r.split()) for r in bootstrap)
-        packages |= origin_packages.resolve(requires, master_packages)
-        unresolved |= requires
+        unresolved.update(Relation(r.split()) for r in bootstrap)
+
+    if debs is not None:
+        master = Index()
+        repository.load_packages(debs, master.add)
+    else:
+        master = None
+
+    if len(unresolved) > 0 or master is not None:
+        packages = origin_packages.resolve(unresolved, master)
+    else:
+        packages = origin_packages
 
     if len(unresolved) > 0:
         warnings.warn(
@@ -75,10 +74,12 @@ def createmirror(context,
             .format(",".join((six.text_type(x) for x in unresolved)))
         )
 
-    if packages is None:
-        packages = origin_packages
+    if False:
+        repository.copy_packages(packages, destination, keep_existing)
+    else:
+        for p in sorted(x.name for x in packages):
+            print(p)
 
-    repository.copy_packages(packages, destination, keep_existing)
     return len(packages)
 
 
@@ -97,7 +98,8 @@ def get_packages(context, kind, arch, url, formatter=None):
     packages = []
     append = packages.append
     if formatter is not None:
-        consumer = lambda x: append(formatter(x))
+        def consumer(x):
+            append(formatter(x))
     else:
         consumer = append
 

@@ -76,6 +76,10 @@ class Package(object):
         return hash((self.name, self.version))
 
     def __cmp__(self, other):
+        if not isinstance(other, Package):
+            raise TypeError(
+                "Unorderable <type 'Package'> and {0}".format(type(other))
+            )
         if self.name < other.name:
             return -1
         if self.name > other.name:
@@ -99,11 +103,13 @@ class Package(object):
         return self.__cmp__(other) >= 0
 
     def __eq__(self, other):
+        if other is None:
+            return False
         return self.__cmp__(other) == 0
 
 
 _RelationBase = collections.namedtuple(
-    "Relation", ("name", "version", "option")
+    "_RelationBase", ("name", "version", "option")
 )
 
 

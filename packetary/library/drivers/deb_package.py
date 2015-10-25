@@ -96,17 +96,17 @@ class DebPackage(Package):
             return getattr(self, '_' + name)
 
         relations = list()
-        for variants in self.dpkg.relations[name]:
-            choice = None
-            for v in reversed(variants):
-                choice = Relation(
+        for options in self.dpkg.relations[name]:
+            option = None
+            for v in reversed(options):
+                option = Relation(
                     v['name'],
                     _get_version_range(v.get('version')),
-                    choice
+                    option
                 )
 
-            if choice is not None:
-                relations.append(choice)
+            if option is not None:
+                relations.append(option)
 
         setattr(self, '_' + name, relations)
         return relations

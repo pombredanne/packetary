@@ -52,13 +52,13 @@ class TestIndex(base.TestCase):
         index.add(p2)
 
         self.assertIs(
-            p1, index.find(Relation("package-0", VersionRange("eq", 1)))
+            p1, index.find("package-0", VersionRange("eq", 1))
         )
         self.assertIs(
-            p2, index.find(Relation("package-0", VersionRange()))
+            p2, index.find("package-0", VersionRange())
         )
         self.assertIsNone(
-            index.find(Relation("package-0", VersionRange("gt", 2)))
+            index.find("package-0", VersionRange("gt", 2))
         )
 
     def test_find_newest_package(self):
@@ -69,10 +69,10 @@ class TestIndex(base.TestCase):
         index.add(p2)
 
         self.assertIs(
-            p1, index.find(Relation(p1.name, VersionRange("eq", p1.version)))
+            p1, index.find(p1.name, VersionRange("eq", p1.version))
         )
         self.assertIs(
-            p2, index.find(Relation(p1.name, VersionRange("eq", 1)))
+            p2, index.find(p1.name, VersionRange("eq", 1))
         )
 
     def test_find_obsolete(self):
@@ -83,10 +83,10 @@ class TestIndex(base.TestCase):
         index.add(p2)
 
         self.assertIs(
-            p2, index.find(Relation("obsoletes-0", VersionRange("eq", 1)))
+            p2, index.find("obsoletes-0", VersionRange("eq", 1))
         )
         self.assertIsNone(
-            index.find(Relation("obsoletes-0", VersionRange("gt", 2)))
+            index.find("obsoletes-0", VersionRange("gt", 2))
         )
 
     def test_find_provides(self):
@@ -97,10 +97,10 @@ class TestIndex(base.TestCase):
         index.add(p2)
 
         self.assertIs(
-            p2, index.find(Relation("provides-0", VersionRange("eq", 2)))
+            p2, index.find("provides-0", VersionRange("eq", 2))
         )
         self.assertIsNone(
-            index.find(Relation("provides-0", VersionRange("lt", 1)))
+            index.find("provides-0", VersionRange("lt", 1))
         )
 
     def test_len(self):

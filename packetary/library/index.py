@@ -61,14 +61,8 @@ def _newest(tree, _):
     return tree.max_item()[1]
 
 
-def _queue_iterator(queue):
-    """Iterates over mutable queue, with uniqueness guarantee."""
-    seen = set()
-    while queue:
-        i = queue.pop()
-        if i not in seen:
-            yield i
-            seen.add(i)
+def _none(*_):
+    return None
 
 
 class Index(object):
@@ -104,28 +98,29 @@ class Index(object):
             for version in versions.values():
                 yield version
 
-    def find(self, relation):
+    def find(self, name, version):
         """Finds the package by name and version.
 
-        @:param relation: the package relation.
-        @:returns: the package if it is found, otherwise None
+        :param name: the package`s name.
+        :param version: the package`s version.
+        :return: the package if it is found, otherwise None
         """
 
-        if relation.name in self.packages:
+        if name in self.packages:
             p = self._find_version(
-                self.packages[relation.name], relation.version
+                self.packages[name], version
             )
             if p is not None:
                 return p
 
-        if relation.name in self.obsoletes:
+        if name in self.obsoletes:
             return self._resolve_relation(
-                self.obsoletes[relation.name], relation
+                self.obsoletes[name], version
             )
 
-        if relation.name in self.provides:
+        if name in self.provides:
             return self._resolve_relation(
-                self.provides[relation.name], relation
+                self.provides[name], version
             )
 
     def add(self, package):
@@ -144,25 +139,25 @@ class Index(object):
 
         :param unresolved: the unresolved depends.
             Note: It will be updated if it is not None.
-        :returns: the set of unresolved depends.
+        :return: the set of unresolved depends.
         """
 
         if unresolved is None:
             unresolved = set()
 
-        for package in self.get_packages():
-            for d in package.requires:
-                if d not in unresolved:
-                    rel = d
-                    while rel is not None:
-                        if self.find(rel) is not None:
-                            break
-                        rel = rel.option
-                else:
-                    rel = None
-
+        for pkg in self.get_packages():
+            requires = six.moves.filterfalse(
+                unresolved.__contains__, pkg.requires
+            )
+            for require in requires:
+                rel = require
+                while rel is not None:
+                    candidate = self.find(rel.name, rel.version)
+                    if candidate not in (None, pkg):
+                        break
+                    rel = rel.option
                 if rel is None:
-                    unresolved.add(d)
+                    unresolved.add(require)
         return unresolved
 
     def resolve(self, requires, master=None):
@@ -171,36 +166,48 @@ class Index(object):
         :param requires: the set of requirements.
             Note. This parameter will be updated.
         :param master: packages from master is skipped
-        :returns: The set of resolved depends.
+        :return: The set of resolved depends.
         """
 
         unresolved = set()
         resolved = set()
         if master is None:
-            master_find = lambda _: None
+            pkg_filter = _none
         else:
-            master_find = master.find
+            pkg_filter = master.find
+            requires.update(master.get_unresolved())
 
-        for require in _queue_iterator(requires):
-            package = master_find(require)
-            if package is not None:
-                requires.update(package.requires)
-                continue
+        stack = list()
+        stack.append((None, requires.copy()))
+        requires.clear()
 
-            package = self.find(require)
-            if package is not None:
-                resolved.add(package)
-                requires.update(package.requires)
-            else:
-                unresolved.add(require)
+        while len(stack) > 0:
+            pkg, required = stack.pop()
+            resolved.add(pkg)
+            required = six.moves.filterfalse(unresolved.__contains__, required)
+            for require in required:
+                rel = require
+                while rel is not None:
+                    if pkg_filter(rel.name, rel.version) is not None:
+                        break
+                    candidate = self.find(rel.name, rel.version)
+                    if candidate not in (None, pkg):
+                        if candidate not in resolved:
+                            stack.append((candidate, candidate.requires))
+                        break
+                    rel = rel.option
 
+                if rel is None:
+                    unresolved.add(require)
+
+        resolved.remove(None)
         requires.update(unresolved)
         return resolved
 
-    def _resolve_relation(self, relations, relation):
+    def _resolve_relation(self, relations, version):
         """Resolve relation according to relations map."""
         for key, candidate in relations.iter_items(reverse=True):
-            if candidate.version.has_intersection(relation.version):
+            if candidate.version.has_intersection(version):
                 return self.packages[key[0]][key[1]]
         return None
 
