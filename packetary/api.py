@@ -74,12 +74,7 @@ def createmirror(context,
             .format(",".join((six.text_type(x) for x in unresolved)))
         )
 
-    if False:
-        repository.copy_packages(packages, destination, keep_existing)
-    else:
-        for p in sorted(x.name for x in packages):
-            print(p)
-
+    repository.copy_packages(packages, destination, keep_existing)
     return len(packages)
 
 
