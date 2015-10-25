@@ -251,7 +251,11 @@ class Driver(RepoDriver):
             stream = GzipDecompress(connection.open_stream(index_file))
             pkg_iter = deb822.Packages.iter_paragraphs(stream)
             for dpkg in pkg_iter:
-                consumer(DebPackage(dpkg, baseurl, suite, comp))
+                try:
+                    consumer(DebPackage(dpkg, baseurl, suite, comp))
+                except Exception as e:
+                    logger.error("Malformed index - %s: %s", index_file, e)
+                    raise
 
         logger.info(
             "packages from %s has been loaded successfully.", index_file
