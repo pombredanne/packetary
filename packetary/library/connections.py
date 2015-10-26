@@ -127,8 +127,8 @@ class Connection(object):
                     raise
                 request.retries_left -= 1
                 logger.exception(
-                    "Failed to open url: %s. retries left - %d.",
-                    six.text_type(e), request.retries_left
+                    "Failed to open url - %s: %s. retries left - %d.",
+                    url, e, request.retries_left
                 )
 
     def retrieve(self, url, filename, offset=0):
