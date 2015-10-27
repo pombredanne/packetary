@@ -66,13 +66,13 @@ class TestConnection(base.TestCase):
         super(TestConnection, self).setUp()
         self.connection = connections.Connection(mock.MagicMock(), 2)
 
-    def test_get_request(self):
-        request = self.connection.get_request("/test/file", 0)
+    def test_make_request(self):
+        request = self.connection.make_request("/test/file", 0)
         self.assertIsInstance(request, connections.RetryableRequest)
         self.assertEqual("file:///test/file", request.get_full_url())
         self.assertEqual(0, request.offset)
         self.assertEqual(2, request.retries_left)
-        request2 = self.connection.get_request("http://server/path", 100)
+        request2 = self.connection.make_request("http://server/path", 100)
         self.assertEqual("http://server/path", request2.get_full_url())
         self.assertEqual(100, request2.offset)
 
@@ -179,7 +179,7 @@ class TestRetryHandler(base.TestCase):
         response.getcode.return_value = 200
         response.msg = "test"
         r = self.handler.http_response(request, response)
-        self.assertIsInstance(r, connections.ResumeableStream)
+        self.assertIsInstance(r, connections.ResumableResponse)
         logger.debug.assert_called_with(
             "finish request: %s - %d (%s), duration - %d ms.",
             "/file/test", 200, "test", 10
@@ -223,7 +223,7 @@ class TestResumeableResponse(base.TestCase):
 
     def test_resume_read(self):
         self.request.offset = 0
-        response = connections.ResumeableStream(
+        response = connections.ResumableResponse(
             self.request,
             self.stream,
             self.opener
@@ -239,7 +239,7 @@ class TestResumeableResponse(base.TestCase):
 
     def test_read(self):
         self.request.offset = 0
-        response = connections.ResumeableStream(
+        response = connections.ResumableResponse(
             self.request,
             six.BytesIO(b"line1\nline2\nline3\n"),
             self.opener

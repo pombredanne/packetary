@@ -17,11 +17,10 @@
 import logging
 import os
 import six
+import six.moves.http_client as http_client
 import six.moves.urllib.request as urllib_request
 import six.moves.urllib_error as urllib_error
-import six.moves.http_client as http_client
 import time
-
 
 from packetary.library.streams import StreamWrapper
 
@@ -42,13 +41,25 @@ class RetryableRequest(urllib_request.Request):
     start_time = 0
 
 
-class ResumeableStream(StreamWrapper):
+class ResumableResponse(StreamWrapper):
+    """The http-response wrapper to add resume ability.
+
+    Allows to resume read from same position if connection is lost.
+    """
+
     def __init__(self, request, response, opener):
-        super(ResumeableStream, self).__init__(response)
+        """Initialises.
+
+        :param request: the original http request
+        :param response: the original http response
+        :param opener: the instance of urllib.OpenerDirector
+        """
+        super(ResumableResponse, self).__init__(response)
         self.request = request
         self.opener = opener
 
     def read_chunk(self, chunksize):
+        """Overrides super class method."""
         while 1:
             try:
                 chunk = self.stream.read(chunksize)
@@ -63,8 +74,11 @@ class ResumeableStream(StreamWrapper):
 
 
 class RetryHandler(urllib_request.BaseHandler):
+    """urllib Handler to add ability for retrying on server errors."""
+
     @staticmethod
     def http_request(request):
+        """Initialises http request."""
         logger.debug("start request: %s", request.get_full_url())
         if request.offset > 0:
             request.add_header('Range', 'bytes=%d-' % request.offset)
@@ -72,6 +86,10 @@ class RetryHandler(urllib_request.BaseHandler):
         return request
 
     def http_response(self, request, response):
+        """Wraps response in a ResumableResponse.
+
+        Checks that partial request completed successfully.
+        """
         # the server should response partial content if range is specified
         logger.debug(
             "finish request: %s - %d (%s), duration - %d ms.",
@@ -80,9 +98,10 @@ class RetryHandler(urllib_request.BaseHandler):
         )
         if request.offset > 0 and response.getcode() != 206:
             raise RangeError("Server does not support ranges.")
-        return ResumeableStream(request, response, self.parent)
+        return ResumableResponse(request, response, self.parent)
 
     def http_error(self, req, fp, code, msg, hdrs):
+        """Checks error code and retries request if it is allowed."""
         if code >= 500 and req.retries_left > 0:
             req.retries_left -= 1
             logger.warning(
@@ -96,11 +115,25 @@ class RetryHandler(urllib_request.BaseHandler):
 
 
 class Connection(object):
+    """Helper class to deal with streams."""
+
     def __init__(self, opener, retries_num):
+        """Initializes.
+
+        :param opener: the instance of urllib.OpenerDirector
+        :param retries_num: the number of allowed retries
+        """
         self.opener = opener
         self.retries_num = retries_num
 
-    def get_request(self, url, offset=0):
+    def make_request(self, url, offset=0):
+        """Makes new http request.
+
+        :param url: the remote file`s url
+        :param offset: the number of bytes from begin, that will be skipped
+        :return: The new http request
+        """
+
         if url.startswith("/"):
             url = "file://" + url
 
@@ -116,7 +149,7 @@ class Connection(object):
         :param offset: the number of bytes from begin, that will be skipped
         """
 
-        request = self.get_request(url, offset)
+        request = self.make_request(url, offset)
         while 1:
             try:
                 return self.opener.open(request)
@@ -184,6 +217,7 @@ class Connection(object):
 
 
 class ConnectionContext(object):
+    """Helper class acquire and release connection within context."""
     def __init__(self, connection, on_exit):
         self.connection = connection
         self.on_exit = on_exit
@@ -201,6 +235,13 @@ class ConnectionsPool(object):
     MIN_CONNECTIONS_COUNT = 1
 
     def __init__(self, count=0, proxy=None, secure_proxy=None, retries_num=0):
+        """Initialises.
+
+        :param count: the number of allowed simultaneously connections
+        :param proxy: the url of proxy for http-connections
+        :param secure_proxy: the url of proxy for https-connections
+        :param retries_num: the number of allowed retries
+        """
         if proxy:
             proxies = {
                 "http": proxy,
@@ -226,6 +267,9 @@ class ConnectionsPool(object):
         """Gets the free connection.
 
         Blocks in case if there is no free connections.
+
+        :param timeout: the timeout in seconds to wait.
+            by default infinity waiting.
         """
         return ConnectionContext(
             self.free.get(timeout=timeout), self._release
