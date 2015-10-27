@@ -18,7 +18,14 @@ import zlib
 
 
 class StreamWrapper(object):
-    """Helper class to implement wrapper around file-like object."""
+    """Helper class to implement stream wrappers.
+
+    It is base-class for Streamers,
+    that provides functionality to transform stream on the fly.
+    The wrapped stream may return data more that required,
+    the extra read data will be kept in the internal buffer till
+    next read.
+    """
 
     CHUNK_SIZE = 1024
 
@@ -28,18 +35,18 @@ class StreamWrapper(object):
         :param stream: file-like object opened in binary mode.
         """
         self.stream = stream
-        self.buffer = b""
+        self.unread_tail = b""
 
     def __getattr__(self, item):
         return getattr(self.stream, item)
 
-    def _read_buffer(self):
-        tmp = self.buffer
-        self.buffer = b""
+    def _read_tail(self):
+        tmp = self.unread_tail
+        self.unread_tail = b""
         return tmp
 
     def _align_chunk(self, chunk, size):
-        self.buffer = chunk[size:]
+        self.unread_tail = chunk[size:]
         return chunk[:size]
 
     def read_chunk(self, chunksize):
@@ -47,7 +54,7 @@ class StreamWrapper(object):
         return self.stream.read(chunksize)
 
     def read(self, size=-1):
-        result = self._read_buffer()
+        result = self._read_tail()
         if size < 0:
             while True:
                 chunk = self.read_chunk(self.CHUNK_SIZE)
@@ -59,7 +66,7 @@ class StreamWrapper(object):
                 result = self._align_chunk(result, size)
             size -= len(result)
             while size > 0:
-                chunk = self.read_chunk(self.CHUNK_SIZE)
+                chunk = self.read_chunk(max(self.CHUNK_SIZE, size))
                 if not chunk:
                     break
                 if len(chunk) > size:
@@ -69,11 +76,11 @@ class StreamWrapper(object):
         return result
 
     def readline(self):
-        pos = self.buffer.find(b"\n")
+        pos = self.unread_tail.find(b"\n")
         if pos >= 0:
-            line = self._align_chunk(self.buffer, pos + 1)
+            line = self._align_chunk(self.unread_tail, pos + 1)
         else:
-            line = self._read_buffer()
+            line = self._read_tail()
             while True:
                 chunk = self.read_chunk(self.CHUNK_SIZE)
                 if not chunk:
@@ -107,7 +114,12 @@ class GzipDecompress(StreamWrapper):
         self.decompress = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
     def read_chunk(self, chunksize):
+        if self.decompress.unconsumed_tail:
+            return self.decompress.decompress(
+                self.decompress.unconsumed_tail, chunksize
+            )
+
         chunk = self.stream.read(chunksize)
         if not chunk:
             return self.decompress.flush()
-        return self.decompress.decompress(chunk)
+        return self.decompress.decompress(chunk, chunksize)

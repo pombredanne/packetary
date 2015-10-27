@@ -32,19 +32,19 @@ class TestBufferedStream(base.TestCase):
         self.stream.CHUNK_SIZE = 10
         chunk = self.stream.read(5)
         self.assertEqual(b"line1", chunk)
-        self.assertEqual(b"\nline", self.stream.buffer)
+        self.assertEqual(b"\nline", self.stream.unread_tail)
         chunk = self.stream.read(1024)
         self.assertEqual(b"\nline2\nline3\n", chunk)
-        self.assertEqual(b"", self.stream.buffer)
+        self.assertEqual(b"", self.stream.unread_tail)
 
     def test_readline(self):
         self.stream.CHUNK_SIZE = 12
         chunk = self.stream.readline()
         self.assertEqual(b"line1\n", chunk)
-        self.assertEqual(b"line2\n", self.stream.buffer)
+        self.assertEqual(b"line2\n", self.stream.unread_tail)
         lines = list(self.stream.readlines())
         self.assertEqual([b"line2\n", b"line3\n"], lines)
-        self.assertEqual(b"", self.stream.buffer)
+        self.assertEqual(b"", self.stream.unread_tail)
 
     def test_readlines(self):
         self.stream.CHUNK_SIZE = 12
@@ -71,19 +71,19 @@ class TestGzipDecompress(base.TestCase):
     def test_read(self):
         chunk = self.stream.read(5)
         self.assertEqual(b"line1", chunk)
-        self.assertEqual(b"\nline2\nline3\n", self.stream.buffer)
+        self.assertEqual(b"\nline2\nline3\n", self.stream.unread_tail)
         chunk = self.stream.read(1024)
         self.assertEqual(b"\nline2\nline3\n", chunk)
-        self.assertEqual(b"", self.stream.buffer)
+        self.assertEqual(b"", self.stream.unread_tail)
 
     def test_readline(self):
         self.stream.CHUNK_SIZE = 12
         chunk = self.stream.readline()
         self.assertEqual(b"line1\n", chunk)
-        self.assertEqual(b"line2\nline3\n", self.stream.buffer)
+        self.assertEqual(b"line2\nl", self.stream.unread_tail)
         lines = list(self.stream.readlines())
         self.assertEqual([b"line2\n", b"line3\n"], lines)
-        self.assertEqual(b"", self.stream.buffer)
+        self.assertEqual(b"", self.stream.unread_tail)
 
     def test_readlines(self):
         self.stream.CHUNK_SIZE = 12

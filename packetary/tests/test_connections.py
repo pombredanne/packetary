@@ -92,16 +92,16 @@ class TestConnection(base.TestCase):
         self.connection.open_stream("/test/file")
         self.assertEqual(2, self.connection.opener.open.call_count)
         logger.exception.assert_called_with(
-            "Failed to open url: %s. retries left - %d.",
-            "I/O error", 1
+            "Failed to open url - %s: %s. retries left - %d.",
+            "/test/file", "I/O error", 1
         )
 
         self.connection.opener.open.side_effect = IOError("I/O error")
         with self.assertRaises(IOError):
             self.connection.open_stream("/test/file")
         logger.exception.assert_called_with(
-            "Failed to open url: %s. retries left - %d.",
-            "I/O error", 0
+            "Failed to open url - %s: %s. retries left - %d.",
+            "/test/file", "I/O error", 0
         )
 
     def test_raise_other_errors(self):
