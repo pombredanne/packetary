@@ -16,13 +16,20 @@ import copy
 import six
 
 
-def filter_in_set(choices, field, iterable):
+def filter_in_set(choices, iterable, key=None, attr=None):
     """Filters by next(data)[field] in choices."""
 
     choices = set(choices)
+    if key is not None and attr is not None:
+        raise ValueError("'key' and 'attr' cannot be specified"
+                         "simultaneously.")
 
-    def function(x):
-        return x[field] in choices
+    if key is not None:
+        def function(x):
+            return x[key] in choices
+    else:
+        def function(x):
+            return getattr(x, attr) in choices
 
     return six.moves.filter(function, iterable)
 

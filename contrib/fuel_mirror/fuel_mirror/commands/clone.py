@@ -84,6 +84,11 @@ class CloneCommand(BaseCommand):
             const="centos",
             help="Clones the repositories for Centos."
         )
+        parser.add_argument(
+            "-e", "--env",
+            dest="env", nargs="+",
+            help="Fuel environment ID to update"
+        )
 
         return parser
 
@@ -98,7 +103,7 @@ class CloneCommand(BaseCommand):
         self.app.stdout.write("Packages processed: {0}\n".format(count))
         if parsed_args.apply:
             self.app.stdout.write("Updated clusters:\n")
-            self.update_clusters(repositories)
+            self.update_clusters(repositories, parsed_args.env)
         if parsed_args.set_default:
             self.app.stdout.write("Updated defaults:\n")
             self.update_default_repos(repositories)
@@ -171,15 +176,23 @@ class CloneCommand(BaseCommand):
                 sources_filter.remove("system")
                 sources = (x for x in sources if x["name"] == x["osname"])
             if sources_filter:
-                sources = filter_in_set(parsed_args.sources, "name", sources)
+                sources = filter_in_set(
+                    parsed_args.sources, sources, key="name"
+                )
         if parsed_args.releases:
-            sources = filter_in_set(parsed_args.releases, "osname", sources)
+            sources = filter_in_set(
+                parsed_args.releases, sources, key="osname"
+            )
         return sources
 
-    def update_clusters(self, repositories):
+    def update_clusters(self, repositories, ids=None):
         """Applies repositories for existing clusters."""
         logger.info("Updating repositories...")
-        for cluster in self.app.fuel.Environment.get_all():
+        clusters = self.app.fuel.Environment.get_all()
+        if ids:
+            clusters = filter_in_set(ids, clusters, attr="id")
+
+        for cluster in clusters:
             release = self.app.fuel.Release.get_by_ids(
                 [cluster.data["release_id"]]
             )[0]
