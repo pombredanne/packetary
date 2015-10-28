@@ -71,7 +71,7 @@ class Application(app.App):
         self.versions = config["versions"]
         self.sources = config['sources']
         self.fuel = accessors.FuelObjectsAccessor(
-            self.options.fuel_server or self.config['fuel_server'],
+            self.options.fuel_server or self.config.get('fuel_server'),
             self.options.fuel_password
         )
         fuel_ver = self.fuel.FuelVersion.get_all_data()

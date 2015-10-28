@@ -16,9 +16,6 @@ import functools
 import os
 
 
-_DEFAULT_CREDENTIALS = "admin", "admin"
-
-
 class PacketaryAPIAccessor(object):
     """Packetary.api accessor."""
     def __init__(self, **kwargs):
@@ -34,17 +31,14 @@ class FuelObjectsAccessor(object):
     """Fuelclient.Objects accessor."""
 
     def __init__(self, fuel_address=None, fuel_password=None):
-        if fuel_address is not None:
+        if fuel_address:
             host_and_port = fuel_address.split(":")
             os.environ["SERVER_ADDRESS"] = host_and_port[0]
             if len(host_and_port) > 1:
                 os.environ["LISTEN_PORT"] = host_and_port[1]
 
-        # default credentials
-        os.environ["KEYSTONE_USER"] = _DEFAULT_CREDENTIALS[0]
-        os.environ["KEYSTONE_PASS"] = _DEFAULT_CREDENTIALS[1]
-
         if fuel_password is not None:
+            os.environ["KEYSTONE_USER"] = "admin"
             os.environ["KEYSTONE_PASS"] = fuel_password
 
         # import fuelclient.ClientAPI after configuring

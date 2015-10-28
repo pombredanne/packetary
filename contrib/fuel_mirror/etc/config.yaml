@@ -5,7 +5,7 @@ common:
     retry_count: 3
     http_proxy: null
     https_proxy: null
-    fuel_server: "localhost:8080"
+    fuel_server: null
     http_base: "http://10.20.0.2:8080"
     repo_folder: "/var/www/nailgun"
 
