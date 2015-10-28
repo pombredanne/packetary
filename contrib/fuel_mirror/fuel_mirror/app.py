@@ -21,6 +21,7 @@ from cliff.commandmanager import CommandManager
 import yaml
 
 
+import fuel_mirror
 from fuel_mirror.common import accessors
 
 
@@ -90,7 +91,7 @@ class Application(app.App):
 def main(argv=None):
     return Application(
         description="The packages management tool.",
-        version="0.0.1",
+        version=fuel_mirror.__version__,
         command_manager=CommandManager("packetary", convert_underscores=True)
     ).run(argv)
 
