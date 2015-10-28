@@ -19,4 +19,4 @@ import pbr.version
 
 
 __version__ = pbr.version.VersionInfo(
-    'packetary').version_string()
+    'fuel_mirror').version_string()
