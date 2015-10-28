@@ -113,18 +113,19 @@ class CloneCommand(BaseCommand):
         """Copies repositories to local fs."""
         total = 0
         repo_url = self.app.config["http_base"]
-        destination_base = self.app.config["repo_folder"]
+        repo_folder = self.app.config["repo_folder"]
         for repo_config in self.filter_repositories(parsed_args):
             name = repo_config["name"]
             osname = repo_config["osname"]
             baseurl = repo_config["baseurl"]
             url_parser = get_url_parser(repo_config["type"])
-            localurl = "/".join((
-                repo_url, "mirror", name, osname
-            ))
-            destination = os.path.join(
-                destination_base, "mirror", name, osname
-            )
+            if osname != name:
+                folder = name, osname
+            else:
+                folder = name,
+
+            localurl = "/".join((repo_url, "mirror") + folder)
+            destination = os.path.join(repo_folder, "mirror", *folder)
 
             if parsed_args.partial and 'master' in repo_config:
                 master = find_by_attributes(
@@ -222,14 +223,13 @@ class CloneCommand(BaseCommand):
                 )
                 continue
 
-            modified = self.update_repository_settings(
+            if self.update_repository_settings(
                 release.data["attributes_metadata"], repositories[osname]
-            )
-            if modified:
+            ):
                 # TODO(need to add method for release object)
                 release.connection.put_request(
                     release.instance_api_path.format(release.id),
-                    {"attributes_metadata": modified}
+                    release.data
                 )
 
     @staticmethod
