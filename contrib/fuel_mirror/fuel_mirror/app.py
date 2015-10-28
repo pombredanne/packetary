@@ -97,7 +97,7 @@ def main(argv=None):
     return Application(
         description="The packages management tool.",
         version=fuel_mirror.__version__,
-        command_manager=CommandManager("packetary", convert_underscores=True)
+        command_manager=CommandManager("fuel_mirror", convert_underscores=True)
     ).run(argv)
 
 
