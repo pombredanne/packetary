@@ -121,7 +121,7 @@ class YumPackage(Package):
 
     @property
     def baseurl(self):
-        return self.baseurl
+        return self._baseurl
 
     @property
     def requires(self):
