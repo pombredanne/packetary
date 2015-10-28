@@ -1,6 +1,6 @@
 include AUTHORS
 include ChangeLog
-recursive-include etc
+recursive-include etc *
 
 exclude .gitignore
 exclude .gitreview
