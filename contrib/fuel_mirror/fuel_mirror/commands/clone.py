@@ -36,21 +36,21 @@ class CloneCommand(BaseCommand):
             dest="set_default",
             action="store_false",
             default=True,
-            help="Path to config file."
+            help="Do not set as default repository."
         )
         parser.add_argument(
             "-a", "--no-apply",
             dest="apply",
             action="store_false",
             default=True,
-            help="Path to config file."
+            help="Do not apply for environments."
         )
         parser.add_argument(
             "-F", "--full",
             dest="partial",
             action="store_false",
             default=True,
-            help="Path to config file."
+            help="Do no analyze dependencies, create full mirror."
         )
 
         repos_group = parser.add_argument_group()
@@ -82,7 +82,7 @@ class CloneCommand(BaseCommand):
             dest="releases",
             action="append_const",
             const="centos",
-            help="Clones the repositories for Centos."
+            help="Clones the repositories for CentOs."
         )
         parser.add_argument(
             "-e", "--env",
