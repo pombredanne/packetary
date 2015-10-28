@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from packetary.api import createmirror
 from packetary.cli.commands.base import BaseRepoCommand
 from packetary.cli.commands.utils import read_lines_from_file
@@ -44,7 +42,6 @@ class CreateMirror(BaseRepoCommand):
             nargs='+',
             dest='bootstrap',
             metavar='PACKAGE [OP VERSION]',
-            type=six.text_type,
             help="Bootstrap package(s)."
         )
         bootstrap_group.add_argument(
@@ -60,7 +57,6 @@ class CreateMirror(BaseRepoCommand):
             '-r', '--requires-url',
             nargs="+",
             dest='requires',
-            type=six.text_type,
             metavar='URL',
             help='Space separated list of urls for origin repositories.')
 

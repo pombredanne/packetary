@@ -29,28 +29,17 @@ def create_context(**kwargs):
     return Context(**kwargs)
 
 
-def createmirror(context,
-                 kind,
-                 arch,
-                 destination,
-                 origin,
-                 debs=None,
-                 bootstrap=None,
-                 keep_existing=True):
-    """Creates mirror of repository(es).
-
-    :param context: the context
-    :param kind: the kind of repository
-    :param arch: the target architecture
-    :param destination: the destination folder
+def _get_set_of_packages(repository,
+                         origin,
+                         debs=None,
+                         bootstrap=None):
+    """Get the list of packages related to depends.
+    :param repository: the repository manager
     :param origin: the url(s) to origin repository
     :param debs: the url(s) of repositories to get dependency
     :param bootstrap: the additional packages required for bootstrap
-    :param keep_existing: Remove local packages that does not exist in repo.
-    :return: the number of copied packages
+    :return: the set of packages
     """
-
-    repository = Repository(context, kind, arch)
     origin_packages = Index()
     repository.load_packages(origin, origin_packages.add)
     unresolved = set()
@@ -73,32 +62,63 @@ def createmirror(context,
             "The following depends is unresolved: {0}"
             .format(",".join((six.text_type(x) for x in unresolved)))
         )
+    return packages
 
+
+def createmirror(context,
+                 kind,
+                 arch,
+                 destination,
+                 origin,
+                 debs=None,
+                 bootstrap=None,
+                 keep_existing=True):
+    """Creates mirror of repository(es).
+
+    :param context: the context
+    :param kind: the kind of repository
+    :param arch: the target architecture
+    :param destination: the destination folder
+    :param origin: the url(s) to origin repository
+    :param debs: the url(s) of repositories to get dependency
+    :param bootstrap: the additional packages required for bootstrap
+    :param keep_existing: Remove local packages that does not exist in repo.
+    :return: the number of copied packages
+    """
+
+    repository = Repository(context, kind, arch)
+    packages = _get_set_of_packages(
+        repository, origin, debs, bootstrap
+    )
     repository.copy_packages(packages, destination, keep_existing)
     return len(packages)
 
 
-def get_packages(context, kind, arch, url, formatter=None):
+def get_packages(context,
+                 kind,
+                 arch,
+                 origin,
+                 debs=None,
+                 bootstrap=None,
+                 formatter=None):
     """Gets list of packages in repository(es).
 
     :param context: the context
     :param kind: the kind of repository
     :param arch: the target architecture
-    :param url: the url(s) of repository
+    :param origin: the url(s) to origin repository
+    :param debs: the url(s) of repositories to get dependency
+    :param bootstrap: the additional packages required for bootstrap
     :param formatter: the output formatter
-    :return: list of packages
+    :return: the sequence of packages
     """
 
     repository = Repository(context, kind, arch)
-    packages = []
-    append = packages.append
+    packages = _get_set_of_packages(
+        repository, origin, debs, bootstrap
+    )
     if formatter is not None:
-        def consumer(x):
-            append(formatter(x))
-    else:
-        consumer = append
-
-    repository.load_packages(url, consumer)
+        packages = six.moves.map(formatter, packages)
     return packages
 
 

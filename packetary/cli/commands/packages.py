@@ -17,6 +17,7 @@
 from packetary.api import get_packages
 from packetary.cli.commands.base import BaseProduceOutputCommand
 from packetary.cli.commands.utils import make_display_attr_getter
+from packetary.cli.commands.utils import read_lines_from_file
 
 
 class ListPackages(BaseProduceOutputCommand):
@@ -31,12 +32,49 @@ class ListPackages(BaseProduceOutputCommand):
         "requires",
     )
 
+    def get_parser(self, prog_name):
+        parser = super(ListPackages, self).get_parser(prog_name)
+
+        bootstrap_group = parser.add_mutually_exclusive_group(required=False)
+        bootstrap_group.add_argument(
+            "-b", "--bootstrap",
+            nargs='+',
+            dest='bootstrap',
+            metavar='PACKAGE [OP VERSION]',
+            help="Bootstrap package(s)."
+        )
+        bootstrap_group.add_argument(
+            "-B", "--bootstrap-file",
+            type=read_lines_from_file,
+            dest='bootstrap',
+            metavar='FILENAME',
+            help="Bootstrap package(s)."
+        )
+
+        requires_group = parser.add_mutually_exclusive_group(required=False)
+        requires_group.add_argument(
+            '-r', '--requires-url',
+            nargs="+",
+            dest='requires',
+            metavar='URL',
+            help='Space separated list of urls for origin repositories.')
+
+        requires_group.add_argument(
+            '-R', '--requires-file',
+            type=read_lines_from_file,
+            dest='requires',
+            metavar='FILENAME',
+            help='The path to file with urls for origin repositories.')
+        return parser
+
     def take_repo_action(self, context, parsed_args):
         return get_packages(
             context,
             parsed_args.type,
             parsed_args.arch,
             parsed_args.origins,
+            parsed_args.requires,
+            parsed_args.bootstrap,
             make_display_attr_getter(self.columns)
         )
 
