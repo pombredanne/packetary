@@ -162,8 +162,6 @@ class CloneCommand(BaseCommand):
                         )
                     )
                     total += count
-            # set local url for make further using faster
-            repo_config['baseurl'] = "file://" + destination
         return total
 
     def filter_repositories(self, parsed_args):
