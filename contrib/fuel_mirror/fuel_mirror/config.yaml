@@ -1,11 +1,13 @@
 common:
-    thread_num: 10,
-    connection_count: 8,
-    ignore_error_count: 2,
-    http_proxy: null,
+    thread_count: 10
+    connection_count: 8
+    ignore_error_count: 2
+    retry_count: 3
+    http_proxy: null
     https_proxy: null
-    fuel: "http://localhost:8080"
-    destination: "/var/www/nailgun"
+    fuel_server: "localhost:8080"
+    http_base: "http://10.20.0.2:8080"
+    repo_folder: "/var/www/nailgun"
 
 versions:
     centos_version: "6"
@@ -21,9 +23,6 @@ sources:
              - "mos{mos_version}-updates main restricted"
              - "mos{mos_version}-security main restricted"
              - "mos{mos_version}-holdback main restricted"
-        requirements:
-             - "ubuntu-standard"
-
     -   name: "mos"
         osname: "centos"
         type: "yum"
@@ -39,11 +38,13 @@ sources:
         osname: "ubuntu"
         type: "deb"
         master: "mos"
-        baseurl: "http://archive.ubuntu.com/ubuntu"
+        baseurl: "http://archive.ubuntu.com/ubuntu/"
         repositories:
             - "{ubuntu_version} main multiverse restricted universe"
-            - "{ubuntu_version}-update main multiverse restricted universe"
+            - "{ubuntu_version}-updates main multiverse restricted universe"
             - "{ubuntu_version}-security main multiverse restricted universe"
+        bootstrap:
+             - "ubuntu-standard"
 
     -   name: "centos"
         osname: "centos"

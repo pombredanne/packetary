@@ -16,6 +16,14 @@ import abc
 import six
 
 
+def get_url_parser(kind):
+    """Gets the instance of RepoUrlParser."""
+    return {
+        "deb": DebUrlParser,
+        "yum": YumUrlParser
+    }[kind]()
+
+
 @six.add_metaclass(abc.ABCMeta)
 class RepoUrlParser(object):
     @abc.abstractmethod
@@ -26,22 +34,41 @@ class RepoUrlParser(object):
     def get_name(self, first_name, repo_uri):
         """Gets the name for repo."""
 
-    def get_urls(self, baseurl, repos_uri):
+    @abc.abstractmethod
+    def get_repo_config(self, name, url):
+        """Gets the config for repo in fuel compatible format."""
+
+    def format_url(self, baseurl, uri, **kwargs):
+        """Get the url with replaced variable holders."""
+        return self.join(baseurl, uri).format(**kwargs)
+
+    def get_urls(self, baseurl, uris, **kwargs):
+        """Get the urls from uris."""
         return [
-            self.join(baseurl, x) for x in repos_uri
+            self.format_url(baseurl, x, **kwargs) for x in uris
         ]
 
 
 class DebUrlParser(RepoUrlParser):
     def get_name(self, first_name, uri):
-        last_name = uri.split(" ", 1)[0].rsplit("-", 1)[-1]
-        if last_name:
-            return "-".join((first_name, last_name))
+        suite = uri.split(" ", 1)[0].rsplit("-", 1)
+        if len(suite) > 1:
+            return "-".join((first_name, suite[-1]))
         return first_name
 
     def join(self, baseurl, uri):
         baseurl = baseurl.rstrip()
         return " ".join((baseurl, uri))
+
+    def get_repo_config(self, name, url):
+        baseurl, suite, section = url.split(" ", 2)
+        return {
+            "name": name,
+            "section": section,
+            "suite": suite,
+            "type": "deb",
+            "uri": baseurl,
+        }
 
 
 class YumUrlParser(RepoUrlParser):
@@ -52,9 +79,9 @@ class YumUrlParser(RepoUrlParser):
         baseurl = baseurl.rstrip("/")
         return "/".join((baseurl, uri))
 
-
-def get_url_parser(kind):
-    return {
-        "deb": DebUrlParser,
-        "yum": YumUrlParser
-    }[kind]()
+    def get_repo_config(self, name, url):
+        return {
+            "name": name,
+            "type": "rpm",
+            "uri": url,
+        }

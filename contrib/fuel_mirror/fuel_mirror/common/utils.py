@@ -12,10 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import six
 
 
-def filter_contains(choices, field, iterable):
+def filter_in_set(choices, field, iterable):
     """Filters by next(data)[field] in choices."""
 
     choices = set(choices)
@@ -35,27 +36,23 @@ def find_by_attributes(iterable, **attributes):
         else:
             return i
 
-def list_merge(src, list_b):
-    """merges two lists """"
-    if not isinstance(list_b, list):
-        return deepcopy(list_b)
 
-    to_merge = list_a + list_b
-    primary_repos = sorted(filter(
-        lambda x:
-        x['name'].startswith(DISTROS.ubuntu)
-        or x['name'].startswith(UBUNTU_CODENAME),
-        to_merge))
+def lists_merge(main, patch, key):
+    """Merges the list of dicts with same keys."""
 
-    result = OrderedDict()
-    for repo in primary_repos:
-        result[repo['name']] = None
+    main = copy.copy(main)
+    main_idx = dict(
+        (x[key], i) for i, x in enumerate(main)
+    )
 
-    for repo in to_merge:
-        name = repo['name']
-        if repo.get('delete') is True:
-            result.pop(name, None)
+    patch_idx = dict(
+        (x[key], i) for i, x in enumerate(patch)
+    )
+
+    for k in sorted(patch_idx):
+        if k in main_idx:
+            main[main_idx[k]].update(patch[patch_idx[k]])
         else:
-            result[name] = repo
+            main.append(patch[patch_idx[k]])
 
-    return result.values()
+    return main
