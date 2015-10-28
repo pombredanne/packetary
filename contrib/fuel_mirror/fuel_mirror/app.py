@@ -46,7 +46,7 @@ class Application(app.App):
 
         parser.add_argument(
             "--config",
-            default="/etc/fuel-createmirror/config.yaml",
+            default="/etc/fuel-mirror/config.yaml",
             metavar="PATH",
             help="Path to config file."
         )
@@ -104,7 +104,8 @@ def debug(name, cmd_class, argv=None):
 
     argv = [name] + argv + [
         "-v", "-v", "--debug", '-P', "admin",
-        "--config", os.path.join(os.path.dirname(__file__), "config.yaml")]
+        "--config",
+        os.path.join(os.path.dirname(__file__), "..", "etc", "config.yaml")]
 
     cmd_mgr = CommandManager("test_fuel_mirror", convert_underscores=True)
     cmd_mgr.add_command(name, cmd_class)
