@@ -61,11 +61,6 @@ class Application(app.App):
             help="Fuel Master admin password (defaults to admin)."
                  " Alternatively, use env var KEYSTONE_PASSWORD)."
         )
-        parser.add_argument(
-            "-P", "--fuel-password",
-            help="Fuel Master admin password (defaults to admin)."
-                 " Alternatively, use env var KEYSTONE_PASSWORD)."
-        )
         return parser
 
     def initialize_app(self, argv):
