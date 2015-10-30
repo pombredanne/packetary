@@ -16,6 +16,7 @@
 
 import logging
 import os
+import warnings
 
 import six
 import stevedore
@@ -201,9 +202,10 @@ class RepositoryManager(object):
 
         subset = self._get_minimal_subset(packages, rdepends, unresolved)
         if len(unresolved) > 0:
-            six.print_("WARNING: unresolved depends:\n {0}".format(
+            msg = "unresolved depends:\n {0}".format(
                 ", ".join(six.text_type(x) for x in sorted(unresolved))
-            ))
+            )
+            warnings.warn(msg)
         return repos, subset
 
     def _load_repositories(self, urls):
