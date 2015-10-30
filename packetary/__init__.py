@@ -14,9 +14,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import pbr.version
 
+from packetary.manager import RepositoryManager
+
+
+__all__ = [
+    "RepositoryManager",
+]
 
 __version__ = pbr.version.VersionInfo(
     'packetary').version_string()

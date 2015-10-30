@@ -40,7 +40,7 @@ class Application(app.App):
             help="The number of errors that can be ignored."
         )
         parser.add_argument(
-            "--retry-count",
+            "--retries_count",
             type=int,
             default=5,
             metavar="NUMBER",
@@ -54,23 +54,16 @@ class Application(app.App):
             help="The number of threads."
         )
         parser.add_argument(
-            "--connection-count",
-            default=2,
-            type=int,
-            metavar="NUMBER",
-            help="The number of simultaneous connections."
-        )
-        parser.add_argument(
-            "--connection-proxy",
+            "--http-proxy",
             default=None,
             metavar="http://username:password@proxy_host:proxy_port",
-            help="The http proxy url."
+            help="The URL of http proxy."
         )
         parser.add_argument(
-            "--connection-secure-proxy",
+            "--https-proxy",
             default=None,
             metavar="https://username:password@proxy_host:proxy_port",
-            help="The https proxy url."
+            help="The URL of https proxy."
         )
         return parser
 

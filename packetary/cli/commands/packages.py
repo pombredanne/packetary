@@ -14,18 +14,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.api import get_packages
 from packetary.cli.commands.base import BaseProduceOutputCommand
-from packetary.cli.commands.utils import make_display_attr_getter
 from packetary.cli.commands.utils import read_lines_from_file
 
 
 class ListPackages(BaseProduceOutputCommand):
     columns = (
         "name",
+        "repository",
         "version",
         "filename",
-        "size",
+        "filesize",
         "checksum",
         "obsoletes",
         "provides",
@@ -67,15 +66,11 @@ class ListPackages(BaseProduceOutputCommand):
             help='The path to file with urls for origin repositories.')
         return parser
 
-    def take_repo_action(self, context, parsed_args):
-        return get_packages(
-            context,
-            parsed_args.type,
-            parsed_args.arch,
+    def take_repo_action(self, manager, parsed_args):
+        return manager.get_packages(
             parsed_args.origins,
             parsed_args.requires,
             parsed_args.bootstrap,
-            make_display_attr_getter(self.columns)
         )
 
 

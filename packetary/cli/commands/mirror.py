@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.api import createmirror
 from packetary.cli.commands.base import BaseRepoCommand
 from packetary.cli.commands.utils import read_lines_from_file
 
@@ -68,19 +67,17 @@ class CreateMirror(BaseRepoCommand):
             help='The path to file with urls for origin repositories.')
         return parser
 
-    def take_repo_action(self, context, parsed_args):
+    def take_repo_action(self, manager, parsed_args):
         """Overrides base class method."""
-        packages_count = createmirror(
-            context,
-            parsed_args.type,
-            parsed_args.arch,
-            parsed_args.destination,
+
+        stat = manager.clone(
             parsed_args.origins,
+            parsed_args.destination,
             parsed_args.requires,
             parsed_args.bootstrap,
             parsed_args.keep_existing
         )
-        self.app.stdout.write("Packages copied: %d.\n" % packages_count)
+        self.app.stdout.write("Packages copied: {0}/{1}.\n".format(*stat))
 
 
 def debug(argv=None):

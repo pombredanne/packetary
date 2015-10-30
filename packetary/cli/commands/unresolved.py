@@ -14,9 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from packetary.api import get_unresolved_depends
 from packetary.cli.commands.base import BaseProduceOutputCommand
-from packetary.cli.commands.utils import make_display_attr_getter
 
 
 class ListUnresolved(BaseProduceOutputCommand):
@@ -26,14 +24,8 @@ class ListUnresolved(BaseProduceOutputCommand):
         "option",
     )
 
-    def take_repo_action(self, context, parsed_args):
-        return get_unresolved_depends(
-            context,
-            parsed_args.type,
-            parsed_args.arch,
-            parsed_args.origins,
-            make_display_attr_getter(self.columns)
-        )
+    def take_repo_action(self, manager, parsed_args):
+        return manager.get_unresolved_depends(parsed_args.origins)
 
 
 def debug(argv=None):

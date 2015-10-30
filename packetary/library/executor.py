@@ -58,6 +58,7 @@ class AsynchronousSection(object):
         gt = self.executor.spawn(func, *args, **kwargs)
         self.tasks.add(gt)
         gt.link(self.on_complete)
+        return gt
 
     def on_complete(self, gt):
         """Callback to handle task completion."""

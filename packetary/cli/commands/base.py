@@ -19,7 +19,8 @@ import abc
 from cliff import command
 import six
 
-from packetary.api import create_context
+from packetary import RepositoryManager
+from packetary.cli.commands.utils import make_display_attr_getter
 from packetary.cli.commands.utils import read_lines_from_file
 
 
@@ -70,12 +71,14 @@ class BaseRepoCommand(command.Command):
         :rtype: object
         """
         return self.take_repo_action(
-            create_context(**self.app_args.__dict__),
+            RepositoryManager.create(
+                self.app_args, parsed_args.type, parsed_args.arch
+            ),
             parsed_args
         )
 
     @abc.abstractmethod
-    def take_repo_action(self, context, parsed_args):
+    def take_repo_action(self, manager, parsed_args):
         """Takes action on repository.
 
         :return: the action result
@@ -158,7 +161,9 @@ class BaseProduceOutputCommand(BaseRepoCommand):
         # cliff.lister with default formatters does not work
         # with large arrays of data
         # TODO(custom formatter)
-        data = self.take_action(parsed_args)
+
+        formatter = make_display_attr_getter(self.columns)
+        data = six.moves.map(formatter, self.take_action(parsed_args))
         self.produce_output(parsed_args, data)
         return 0
 

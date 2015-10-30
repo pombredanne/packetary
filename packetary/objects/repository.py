@@ -21,7 +21,7 @@ class Repository(PlainObject):
     def __init__(self, name, url, architecture, origin):
         """Initialises.
 
-        :param name: the repository`s name
+        :param name: the repository`s name, may be tuple or string
         :param url: the repository`s URL
         :param architecture: the repository`s architecture
         :param origin: the repository`s origin
@@ -33,6 +33,16 @@ class Repository(PlainObject):
 
     def __hash__(self):
         return hash((self.name, self.architecture))
+
+    def __str__(self):
+        if isinstance(self.name, tuple):
+            return "-".join(self.name)
+        return "%s" % self.name
+
+    def __unicode__(self):
+        if isinstance(self.name, tuple):
+            return u"-".join(self.name)
+        return u"%s" % self.name
 
     def __cmp__(self, other):
         if self.name < other.name:
