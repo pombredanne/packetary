@@ -161,7 +161,7 @@ class RepositoryManager(object):
             self.driver.copy_packages(mirros[repo], packages, stat)
         return stat
 
-    def get_unresolved_dependens(self, url):
+    def get_unresolved_depends(self, url):
         """Gets list of unresolved depends for repository(es).
         :param url: the url(s) of repository
         :return: list of unresolved relations
@@ -169,7 +169,7 @@ class RepositoryManager(object):
         packages = Index()
         self.driver.load_packages(
             self._load_repositories(url),
-            packages
+            packages.add
         )
         return self._get_unresolved_depends(packages)
 
@@ -183,25 +183,28 @@ class RepositoryManager(object):
         :return: the number of copied packages
         """
         packages = Index()
-        rdepends = None
-
         repos = self._load_repositories(origin)
         self.driver.load_packages(repos, packages.add)
+
         if debs is not None:
             rdepends = Index()
             self.driver.load_packages(
-                self._load_repositories(origin),
+                self._load_repositories(debs),
                 rdepends.add
             )
+        else:
+            rdepends = None
 
         unresolved = set()
         if bootstrap is not None:
             unresolved.update(PackageRelation(r.split()) for r in bootstrap)
 
-        return (
-            repos,
-            self._get_minimal_subset(packages, rdepends, unresolved)
-        )
+        subset = self._get_minimal_subset(packages, rdepends, unresolved)
+        if len(unresolved) > 0:
+            six.print_("WARNING: unresolved depends:\n {0}".format(
+                ", ".join(six.text_type(x) for x in sorted(unresolved))
+            ))
+        return repos, subset
 
     def _load_repositories(self, urls):
         """Gets the sequence of repositories from URLs."""
@@ -250,10 +253,11 @@ class RepositoryManager(object):
                             if candidate not in resolved:
                                 stack.append((candidate, candidate.requires))
                             break
-                    else:
-                        unresolved.add(require)
+                else:
+                    unresolved.add(require)
 
         resolved.remove(None)
+        requires.clear()
         requires.update(unresolved)
         return resolved
 

@@ -36,12 +36,12 @@ class Repository(PlainObject):
 
     def __str__(self):
         if isinstance(self.name, tuple):
-            return "-".join(self.name)
+            return ":".join(self.name)
         return "%s" % self.name
 
     def __unicode__(self):
         if isinstance(self.name, tuple):
-            return u"-".join(self.name)
+            return u":".join(self.name)
         return u"%s" % self.name
 
     def __cmp__(self, other):

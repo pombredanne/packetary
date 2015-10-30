@@ -53,20 +53,16 @@ class RepositoryDriver(object):
 
     def load_repositories(self, urls, arch, consumer):
         """Loads the repositories."""
-        with self.async_section(0) as section:
-            for parsed_url in self.parse_urls(urls):
-                section.execute(
-                    self.get_repository, parsed_url, arch, consumer
-                )
+        for parsed_url in self.parse_urls(urls):
+            self.get_repository(parsed_url, arch, consumer)
 
     def load_packages(self, repositories, consumer):
         """Loads packages from repository.
         :param repositories: the repository object
         :param consumer: the package consumer
         """
-        with self.async_section(0) as section:
-            for r in repositories:
-                section.execute(self.get_packages, r, consumer)
+        for r in repositories:
+            self.get_packages(r, consumer)
 
     def clone_repositories(self, repositories, destination,
                            source=False, locale=False):

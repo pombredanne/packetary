@@ -21,7 +21,7 @@ class ListUnresolved(BaseProduceOutputCommand):
     columns = (
         "name",
         "version",
-        "option",
+        "alternative",
     )
 
     def take_repo_action(self, manager, parsed_args):

@@ -117,7 +117,7 @@ class DebRepositoryDriver(RepositoryDriver):
         """
         index = _get_meta_url(repository, "Packages.gz")
         stream = GzipDecompress(self.connection.open_stream(index))
-        self.logger.info("loading packages from %s ...", index)
+        self.logger.info("loading packages from %s ...", repository)
         pkg_iter = deb822.Packages.iter_paragraphs(stream)
         counter = 0
         for dpkg in pkg_iter:
@@ -138,12 +138,15 @@ class DebRepositoryDriver(RepositoryDriver):
                     obsoletes=_get_relations(dpkg, "replaces"),
                     provides=_get_relations(dpkg, "provides"),
                 ))
-            except KeyError:
-                self.logger.error("Malformed index: %s - %s", repository, dpkg.get_as_string())
+            except KeyError as e:
+                self.logger.error(
+                    "Malformed index %s - %s: %s",
+                    repository, six.text_type(dpkg), six.text_type(e)
+                )
                 raise
             counter += 1
 
-        self.logger.info("loaded: %d packages from %s.", counter, index)
+        self.logger.info("loaded: %d packages from %s.", counter, repository)
 
     def save_packages(self, repository, packages):
         """Assigns new packages to repository.
