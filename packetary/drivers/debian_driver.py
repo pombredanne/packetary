@@ -295,6 +295,9 @@ def _get_meta_path(repository, filename):
 
 def _is_mandatory(dpkg):
     """Checks that package is mandatory."""
+    if dpkg.get("essential") == "yes":
+        return True
+
     return _PRIORITIES.get(
         dpkg.get("priority"), _MANDATORY_PRIORITY + 1
     ) < _MANDATORY_PRIORITY

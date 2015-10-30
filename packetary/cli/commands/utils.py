@@ -16,14 +16,16 @@
 
 
 import six
+import operator
 
 
 def read_lines_from_file(filename):
     """Reads lines from file."""
     with open(filename, 'r') as f:
         return [
-            x.strip() for x in f.readlines()
-            if not x.startswith("#")
+            x
+            for x in six.moves.map(operator.methodcaller("strip"), f)
+            if x and not x.startswith("#")
         ]
 
 
