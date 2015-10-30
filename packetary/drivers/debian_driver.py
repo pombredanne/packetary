@@ -45,7 +45,7 @@ _OPERATORS_MAPPING = {
     '<=': 'le',
 }
 
-_ARCHITECTURE_MAPPING = {
+_ARCHITECTURES = {
     "x86_64": "amd64",
     "i386": "i386",
     "source": "Source",
@@ -99,13 +99,13 @@ class DebRepositoryDriver(RepositoryDriver):
         base, suite, component = parsed_url
         release = "/".join((
             base, "dists", suite, component,
-            "binary-" + _ARCHITECTURE_MAPPING[arch],
+            "binary-" + _ARCHITECTURES[arch],
             "Release"
         ))
         deb_release = deb822.Release(self.connection.open_stream(release))
         consumer(Repository(
             name=(deb_release["Archive"], deb_release["Component"]),
-            architecture=_ARCHITECTURE_MAPPING[deb_release["Architecture"]],
+            architecture=arch,
             origin=deb_release["origin"],
             url=base + "/"
         ))
@@ -207,7 +207,7 @@ class DebRepositoryDriver(RepositoryDriver):
         release["Label"] = repository.origin
         release["Archive"] = repository.name[0]
         release["Component"] = repository.name[1]
-        release["Architecture"] = repository.architecture
+        release["Architecture"] = _ARCHITECTURES[repository.architecture]
 
         with closing(open(os.path.join(path, "Release"), "wb")) as fd:
             release.dump(fd)
@@ -231,8 +231,6 @@ class DebRepositoryDriver(RepositoryDriver):
                     meta["Label"] = repository.origin
                     meta["Suite"] = repository.name[0]
                     meta["Codename"] = repository.name[0].split("-")[0]
-                    meta["Architectures"] = repository.architecture
-                    meta["Components"] = repository.name[1]
                     meta["Description"] = "The packages repository."
                     for x in _CHECKSUM_METHODS:
                         meta[x] = list()
@@ -246,12 +244,6 @@ class DebRepositoryDriver(RepositoryDriver):
                             })
                 else:
                     self.logger.debug("update suite index %s, %s.", release_path)
-                    _add_to_string_list(
-                        meta, "Architectures", repository.architecture
-                    )
-                    _add_to_string_list(
-                        meta, "Components", repository.name[1]
-                    )
                     for fpath, size, cs in _get_files_info(repository):
                         fname = fpath[len(path) + 1:]
                         for m, checksum in cs:
@@ -270,6 +262,13 @@ class DebRepositoryDriver(RepositoryDriver):
                 meta["Date"] = datetime.datetime.now().strftime(
                     "%a, %d %b %Y %H:%M:%S %Z"
                 )
+                _add_to_string_list(
+                    meta, "Architectures",
+                    _ARCHITECTURES[repository.architecture]
+                )
+                _add_to_string_list(
+                    meta, "Components", repository.name[1]
+                )
                 fd.truncate(0)
                 meta.dump(fd)
             finally:
@@ -280,7 +279,7 @@ def _get_meta_url(repository, filename):
     """Get the meta file url."""
     return "/".join((
         repository.url, "dists", repository.name[0], repository.name[1],
-        "binary-" + _ARCHITECTURE_MAPPING[repository.architecture],
+        "binary-" + _ARCHITECTURES[repository.architecture],
         filename
     ))
 
@@ -289,7 +288,7 @@ def _get_meta_path(repository, filename):
     """Get the meta file url."""
     return os.path.join(
         repository.url, "dists", repository.name[0], repository.name[1],
-        "binary-" + _ARCHITECTURE_MAPPING[repository.architecture],
+        "binary-" + _ARCHITECTURES[repository.architecture],
         filename
     )
 
