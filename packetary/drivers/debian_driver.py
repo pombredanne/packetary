@@ -243,7 +243,7 @@ class DebRepositoryDriver(RepositoryDriver):
                                 "name": fname
                             })
                 else:
-                    self.logger.debug("update suite index %s, %s.", release_path)
+                    self.logger.debug("update suite index %s.", release_path)
                     for fpath, size, cs in _get_files_info(repository):
                         fname = fpath[len(path) + 1:]
                         for m, checksum in cs:
