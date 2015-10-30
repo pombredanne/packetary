@@ -30,6 +30,11 @@ from packetary.objects import PackageRelation
 logger = logging.getLogger(__package__)
 
 
+class UnresolvedWarning(UserWarning):
+    """Warning about unresolved packages."""
+    pass
+
+
 class Configuration(object):
     """The configuration object."""
 
@@ -205,7 +210,7 @@ class RepositoryManager(object):
             msg = "unresolved depends:\n {0}\n".format(
                 ", ".join(six.text_type(x) for x in sorted(unresolved))
             )
-            warnings.warn(msg)
+            warnings.warn(UnresolvedWarning(msg))
         return repos, subset
 
     def _load_repositories(self, urls):
