@@ -18,9 +18,9 @@ from packetary.cli.commands.base import BaseRepoCommand
 from packetary.cli.commands.utils import read_lines_from_file
 
 
-class CreateMirror(BaseRepoCommand):
+class CloneCommand(BaseRepoCommand):
     def get_parser(self, prog_name):
-        parser = super(CreateMirror, self).get_parser(prog_name)
+        parser = super(CloneCommand, self).get_parser(prog_name)
 
         parser.add_argument(
             "-d", "--destination",
@@ -82,7 +82,7 @@ class CreateMirror(BaseRepoCommand):
 
 def debug(argv=None):
     from packetary.cli.app import debug
-    debug("mirror", CreateMirror, argv)
+    debug("clone", CloneCommand, argv)
 
 
 if __name__ == "__main__":
