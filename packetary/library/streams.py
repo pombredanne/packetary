@@ -118,8 +118,8 @@ class GzipDecompress(StreamWrapper):
             chunk = self.decompress.decompress(
                 self.decompress.unconsumed_tail, chunksize
             )
-            assert len(chunk) > 0
-            return chunk
+            if chunk:
+                return chunk
 
         chunk = self.stream.read(chunksize)
         if not chunk:
