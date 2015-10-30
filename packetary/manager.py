@@ -202,7 +202,7 @@ class RepositoryManager(object):
 
         subset = self._get_minimal_subset(packages, rdepends, unresolved)
         if len(unresolved) > 0:
-            msg = "unresolved depends:\n {0}".format(
+            msg = "unresolved depends:\n {0}\n".format(
                 ", ".join(six.text_type(x) for x in sorted(unresolved))
             )
             warnings.warn(msg)
