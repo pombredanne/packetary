@@ -57,6 +57,7 @@ sources:
              - "cpufrequtils"
              - "debconf-utils"
              - "devscripts"
+             - "fping"
              - "git"
              - "grub-pc"
              - "htop"
