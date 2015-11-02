@@ -22,7 +22,7 @@ sources:
             - "mos{mos_version} main restricted"
             - "mos{mos_version}-updates main restricted"
             - "mos{mos_version}-security main restricted"
-             - "mos{mos_version}-holdback main restricted"
+            - "mos{mos_version}-holdback main restricted"
     -   name: "mos"
         osname: "centos"
         type: "yum"
