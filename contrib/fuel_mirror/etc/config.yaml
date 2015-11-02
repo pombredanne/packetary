@@ -76,6 +76,7 @@ sources:
              - "openssh-server"
              - "percona-toolkit"
              - "percona-xtrabackup"
+             - "pm-utils"
              - "python-lesscpy"
              - "puppet"
              - "rsyslog-gnutls"
