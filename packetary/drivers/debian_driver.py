@@ -148,7 +148,7 @@ class DebRepositoryDriver(RepositoryDriver):
 
         self.logger.info("loaded: %d packages from %s.", counter, repository)
 
-    def save_packages(self, repository, packages):
+    def rebuild_repository(self, repository, packages):
         """Assigns new packages to repository.
         :param repository: the target repository
         :param packages: the set of packages
