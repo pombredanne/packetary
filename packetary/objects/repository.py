@@ -19,7 +19,7 @@ class Repository(object):
     def __init__(self, name, url, architecture, origin):
         """Initialises.
 
-        :param name: the repository`s name, may be tuple
+        :param name: the repository`s name, may be tuple of strings
         :param url: the repository`s URL
         :param architecture: the repository`s architecture
         :param origin: the repository`s origin

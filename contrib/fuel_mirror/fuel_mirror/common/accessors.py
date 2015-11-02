@@ -19,11 +19,11 @@ import os
 def get_packetary_accessor(**kwargs):
     """Gets the configured repository manager."""
 
-    from packetary import manager
+    import packetary
 
     return functools.partial(
-        manager.RepositoryManager.create,
-        manager.Configuration(**kwargs)
+        packetary.RepositoryManager.create,
+        packetary.Context(packetary.Configuration(**kwargs))
     )
 
 

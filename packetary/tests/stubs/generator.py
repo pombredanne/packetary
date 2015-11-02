@@ -14,26 +14,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from packetary import objects
 
 
 def gen_repository(name="test", url="file:///test",
                    architecture="x86_64", origin="Test"):
+    """Helper to create Repository object with default attributes."""
     return objects.Repository(name, url, architecture, origin)
 
 
 def gen_relation(name="test", version=None, alternative=None):
+    """Helper to create PackageRelation object with default attributes."""
     return [
         objects.PackageRelation(
-            name=name, version=objects.VersionRange(version),
+            name=name,
+            version=objects.VersionRange.from_args(version or []),
             alternative=alternative
         )
     ]
 
 
 def gen_package(idx=1, **kwargs):
+    """Helper to create Package object with default attributes."""
     repository = gen_repository()
     kwargs.setdefault("name", "package{0}".format(idx))
     kwargs.setdefault("repository", repository)

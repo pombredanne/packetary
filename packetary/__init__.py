@@ -16,10 +16,14 @@
 
 import pbr.version
 
-from packetary.manager import RepositoryManager
+from packetary.repo_manager import RepositoryManager
+from packetary.repo_manager import Configuration
+from packetary.repo_manager import Context
 
 
 __all__ = [
+    "Configuration"
+    "Context",
     "RepositoryManager",
 ]
 

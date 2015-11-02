@@ -105,8 +105,10 @@ class TestRelationObject(TestObjectBase):
             generator.gen_relation(name="test1", version=["le", 1])[0]
         )
 
-    def test_construct(self):
-        r = PackageRelation(["test", "le", 2, "test2", "ge", 3, "test3"])
+    def test_from_args(self):
+        r = PackageRelation.from_args(
+            ["test", "le", 2, "test2", "ge", 3, "test3"]
+        )
         self.assertEqual("test", r.name)
         self.assertEqual("le", r.version.op)
         self.assertEqual(2, r.version.edge)
@@ -118,7 +120,9 @@ class TestRelationObject(TestObjectBase):
         self.assertIsNone(r.alternative.alternative.alternative)
 
     def test_iter(self):
-        it = iter(PackageRelation(["test", "le", 2, "test2", "ge", 3]))
+        it = iter(PackageRelation.from_args(
+            ["test", "le", 2, "test2", "ge", 3])
+        )
         self.assertEqual("test", next(it).name)
         self.assertEqual("test2", next(it).name)
         with self.assertRaises(StopIteration):
@@ -139,13 +143,13 @@ class TestVersionRange(TestObjectBase):
             VersionRange(op="le", edge=3)
         )
 
-    def test_parse(self):
-        v = VersionRange("le", 1)
+    def test_from_args(self):
+        v = VersionRange.from_args(["le", 1])
         self.assertEqual("le", v.op)
         self.assertEqual(1, v.edge)
         self.assertEqual(
             VersionRange("ge", 2),
-            VersionRange(["ge", 2])
+            VersionRange.from_args(["ge", 2])
         )
 
     def __check_intersection(self, assertion, cases):

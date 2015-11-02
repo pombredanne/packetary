@@ -197,7 +197,9 @@ class RepositoryManager(object):
 
         unresolved = set()
         if bootstrap is not None:
-            unresolved.update(PackageRelation(r.split()) for r in bootstrap)
+            unresolved.update(
+                PackageRelation.from_args(r.split()) for r in bootstrap
+            )
 
         repos = self._load_repositories(origin)
         if rdepends is not None or len(unresolved) > 0:

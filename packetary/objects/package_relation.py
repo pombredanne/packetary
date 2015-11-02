@@ -30,12 +30,21 @@ class VersionRange(object):
         :param op: the name of operator to compare.
         :param edge: the edge of versions.
         """
-        if isinstance(op, (list, tuple)):
-            if len(op) > 1:
-                edge = op[1]
-            op = op[0]
         self.op = op
         self.edge = edge
+
+    @classmethod
+    def from_args(cls, args):
+        """Construct object from list of args."""
+        if len(args) > 1:
+            edge = args[1]
+        else:
+            edge = None
+        if len(args) > 0:
+            op = args[0]
+        else:
+            op = None
+        return cls(op, edge)
 
     def __hash__(self):
         return hash((self.op, self.edge))
@@ -49,12 +58,12 @@ class VersionRange(object):
 
     def __str__(self):
         if self.edge is not None:
-            return "%s %s" % (self.op, self.edge)
+            return "{0} {1}".format(self.op, self.edge)
         return "any"
 
     def __unicode__(self):
         if self.edge is not None:
-            return u"%s %s" % (self.op, self.edge)
+            return u"{0} {1}".format(self.op, self.edge)
         return u"any"
 
     def has_intersection(self, other):
@@ -62,7 +71,8 @@ class VersionRange(object):
 
         if not isinstance(other, VersionRange):
             raise TypeError(
-                "Unorderable type <type 'VersionRange'> and %s" % type(other)
+                "Unorderable type <type 'VersionRange'> and {0}"
+                .format(type(other))
             )
 
         if self.op is None or other.op is None:
@@ -106,18 +116,28 @@ class PackageRelation(object):
         :param version: the version range of required package
         :param alternative: the alternative relation
         """
-        if isinstance(name, (list, tuple)):
-            if len(name) > 1:
-                version = VersionRange(name[1:3])
-            if len(name) > 3:
-                alternative = PackageRelation(name[3:])
-            name = name[0]
-        if version is None:
-            version = VersionRange()
-
         self.name = name
-        self.version = version
+        self.version = VersionRange() if version is None else version
         self.alternative = alternative
+
+    @classmethod
+    def from_args(cls, args):
+        """Construct relation from list of arguments."""
+        if len(args) > 0:
+            name = args[0]
+        else:
+            raise ValueError("name is mandatory argument.")
+
+        if len(args) > 1:
+            version = VersionRange(*args[1:3])
+        else:
+            version = None
+        if len(args) > 3:
+            alternative = cls.from_args(args[3:])
+        else:
+            alternative = None
+
+        return cls(name, version, alternative)
 
     def __iter__(self):
         """Iterates over alternatives."""
@@ -138,10 +158,14 @@ class PackageRelation(object):
 
     def __str__(self):
         if self.alternative is None:
-            return "%s (%s)" % (self.name, self.version)
-        return "%s (%s) | %s" % (self.name, self.version, self.alternative)
+            return "{0} ({1})".format(self.name, self.version)
+        return "{0} ({1}) | {2}".format(
+            self.name, self.version, self.alternative
+        )
 
     def __unicode__(self):
         if self.alternative is None:
-            return u"%s (%s)" % (self.name, self.version)
-        return u"%s (%s) | %s" % (self.name, self.version, self.alternative)
+            return u"{0} ({1})".format(self.name, self.version)
+        return u"{0} ({1}) | {2}".format(
+            self.name, self.version, self.alternative
+        )

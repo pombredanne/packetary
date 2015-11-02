@@ -15,9 +15,11 @@
 #    under the License.
 
 import mock
+import warnings
 
-from packetary.manager import Index
-from packetary.manager import RepositoryManager
+from packetary.repo_manager import RepositoryManager
+from packetary.repo_manager import UnresolvedWarning
+from packetary.repo_manager import Index
 from packetary.tests import base
 from packetary.tests.stubs import generator
 from packetary.tests.stubs.driver import TestDriverAdapter
@@ -39,7 +41,6 @@ class TestRepositoryManager(base.TestCase):
         ))
 
         unresolved = RepositoryManager._get_unresolved_depends(index)
-
         self.assertItemsEqual(
             ["loop", "unresolved"],
             (x.name for x in unresolved)
@@ -94,7 +95,7 @@ class TestRepositoryManager(base.TestCase):
             (x.name for x in unresolved)
         )
 
-    def test_get_packages_without_depends(self):
+    def test_get_packages_as_is(self):
         driver = mock.MagicMock()
         driver.get_repository.side_effect = generator.gen_repository
         driver.get_packages.side_effect = generator.gen_package
@@ -159,93 +160,66 @@ class TestRepositoryManager(base.TestCase):
 
     def test_copy_minimal_subset_from_repository(self):
         driver = mock.MagicMock()
-        repo = generator.gen_repository()
-        mirror = generator.gen_repository()
+        repo1 = generator.gen_repository(name="repo1")
+        repo2 = generator.gen_repository(name="repo2")
+        repo3 = generator.gen_repository(name="repo3")
+        mirror1 = generator.gen_repository(name="mirror1")
+        mirror2 = generator.gen_repository(name="mirror2")
         packages = [
-            generator.gen_package(1, repository=repo, requires=None),
-            generator.gen_package(2, repository=repo, requires=None)
+            generator.gen_package(
+                idx=6, requires=generator.gen_relation("package2")
+            ),
+            [
+                generator.gen_package(
+                    idx=1, requires=None, repository=repo1
+                ),
+                generator.gen_package(
+                    idx=1, requires=None, version=2, repository=repo1
+                ),
+                generator.gen_package(
+                    idx=2,
+                    requires=generator.gen_relation("package1"),
+                    repository=repo1
+                ),
+                generator.gen_package(
+                    idx=3, requires=None, repository=repo1
+                ),
+                generator.gen_package(
+                    idx=4,
+                    requires=generator.gen_relation("package1"),
+                    repository=repo1,
+                    mandatory=True,
+                )
+            ],
+            generator.gen_package(
+                idx=1, requires=None, version=4, repository=repo2
+            )
         ]
-        driver.get_repository.side_effect = [
-            repo
-        ]
-        driver.clone_repository.return_value = mirror
-        driver.get_packages.return_value = packages
-        driver.copy_package.side_effect = [0, 1]
+        driver.get_repository.side_effect = [repo3, repo1, repo2]
+        driver.get_packages.side_effect = packages
+        driver.clone_repository.side_effect = [mirror1, mirror2]
+        driver.copy_package.side_effect = [0, 1, 2, 0, 4]
         manager = RepositoryManager(TestDriverAdapter(driver), "x86_64")
         stats = manager.clone_repositories(
-            ["file:///repo1"], "/mirror", keep_existing=True
+            ["file:///repo1", "file:///repo2"], "/mirror",
+            ["file:///repo3"],
+            keep_existing=True
         )
-        self.assertEqual(2, stats.total)
-        self.assertEqual(1, stats.copied)
-        for pkg in packages:
-            driver.copy_package.assert_any_call(mirror, pkg, True)
+        self.assertEqual(5, stats.total)
+        self.assertEqual(3, stats.copied)
+        driver.copy_package.assert_any_call(mirror2, packages[2], True)
+        driver.copy_package.assert_any_call(mirror1, packages[1][0], True)
+        driver.copy_package.assert_any_call(mirror1, packages[1][1], True)
+        driver.copy_package.assert_any_call(mirror1, packages[1][2], True)
+        driver.copy_package.assert_any_call(mirror1, packages[1][4], True)
+        self.assertEqual(5, driver.copy_package.call_count)
 
-#  repos, packages = self._load_repositories_with_packages(
-#             origin, debs, bootstrap
-#         )
-#         mirros = dict(six.moves.zip(
-#             repos,
-#             self.driver.clone_repositories(
-#                 repos, os.path.abspath(destination)
-#             )
-#         ))
-#
-#         package_groups = dict((x, set()) for x in repos)
-#         for pkg in packages:
-#             package_groups[pkg.repository].add(pkg)
-#
-#         if keep_existing:
-#             def consume_exist(p):
-#                 package_groups[p.repository].add(p)
-#
-#         else:
-#             def consume_exist(p):
-#                 if p not in package_groups[p.repository]:
-#                     filepath = os.path.join(repo.url, packages.filename)
-#                     logger.info("remove package - %s.", filepath)
-#                     os.remove(repo.url + packages.filename)
-#
-#         self.driver.load_packages(
-#             six.itervalues(mirros),
-#             consume_exist
-#         )
-#
-#         stat = [0, 0]
-#         for repo, packages in six.iteritems(package_groups):
-#             logger.info("update repository: %s", repo.name)
-#             self.driver.copy_packages(mirros[repo], packages, stat)
-#         return stat
-
-   #         packages = self.packages
-   #      os.stat.side_effect = [
-   #          mock.MagicMock(st_size=packages[0].size),
-   #          mock.MagicMock(st_size=packages[1].size + 1),
-   #          mock.MagicMock(st_size=packages[2].size - 1),
-   #          OSError(2, "error")
-   #      ]
-   #
-   #      self.repo.copy_packages(packages, "target", True)
-   #      index_writer = self.repo.driver.create_index(".")
-   #      self.assertEqual(
-   #          len(packages), index_writer.add.call_count
-   #      )
-   #      index_writer.commit.assert_called_once_with(True)
-   #
-   #      retrieve = self.repo.context.connections.get().__enter__().retrieve
-   #      call_args = retrieve.call_args_list
-   #      self.assertEqual(3, retrieve.call_count)
-   #      packages[1].props['size'] = 0
-   #      packages[2].props['size'] -= 1
-   #      packages[3].props['size'] = 0
-   #
-   #      for i in six.moves.range(3):
-   #          self.assertItemsEqual(
-   #              [
-   #                  self.repo.driver.get_path(".", packages[i + 1]),
-   #                  self.repo.driver.get_path("target", packages[i + 1]),
-   #                  packages[i + 1].size,
-   #              ],
-   #              call_args[i][0]
-   #          )
-
-
+    def test_warning_if_unresolved(self):
+        driver = mock.MagicMock()
+        driver.get_repository.side_effect = generator.gen_repository
+        driver.get_packages.side_effect = generator.gen_package
+        manager = RepositoryManager(TestDriverAdapter(driver), "x86_64")
+        with warnings.catch_warnings(record=True) as log:
+            manager.get_packages("file:///repo1", bootstrap=["package10"])
+        self.assertIsInstance(log[0].message, UnresolvedWarning)
+        self.assertIn("package10", log[0].message.message)
