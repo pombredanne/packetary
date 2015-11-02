@@ -21,7 +21,7 @@ import os
 import six
 from six.moves.urllib.parse import urljoin
 
-from packetary.objects import CopyStatistics
+from packetary.objects.statistics import CopyStatistics
 
 
 @six.add_metaclass(abc.ABCMeta)
