@@ -259,6 +259,7 @@ class RepositoryManager(object):
                     if rel not in unresolved:
                         if pkg_filter(rel.name, rel.version) is not None:
                             break
+                        # use all packages that meets depends
                         candidates = index.find_all(rel.name, rel.version)
                         if len(candidates) > 0:
                             for cnd in candidates:
