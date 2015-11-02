@@ -101,7 +101,7 @@ class CreateCommand(BaseCommand):
         """
         repo_configs = dict()
         stats = self.copy_repositories(parsed_args, repo_configs)
-        self.app.stdout.write("Packages processed: {0}/{1}\n".format(*stats))
+        self.app.stdout.write("Packages processed: {0.copied}/{0.total}\n".format(stats))
         if parsed_args.apply:
             self.app.stdout.write("Updated clusters:\n")
             self.update_clusters(repo_configs, parsed_args.env)
@@ -260,7 +260,7 @@ class CreateCommand(BaseCommand):
 def debug(argv=None):
     from fuel_mirror.app import debug
 
-    debug("clone", CloneCommand, argv)
+    debug("create", CreateCommand, argv)
 
 
 if __name__ == "__main__":
