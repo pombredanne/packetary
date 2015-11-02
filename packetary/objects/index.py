@@ -140,6 +140,7 @@ class Index(object):
             return self._resolve_relation(
                 self.provides[name], version
             )
+        return []
 
     def add(self, package):
         """Adds new package to indexes.
