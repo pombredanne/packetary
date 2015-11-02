@@ -30,18 +30,34 @@ def _make_operator(direction, op):
 def _top_down(tree, version, condition):
     """Finds first package from top to down that satisfies condition."""
     result = []
-    for item in tree.item_slice(None, version, reverse=True):
+    try:
+        bound = tree.ceiling_item(version)
+        if bound[0] == version and condition(bound[0], version):
+            result.append(bound[1])
+        upper = bound[0]
+    except KeyError:
+        upper = version
+
+    for item in tree.item_slice(None, upper, reverse=True):
         if not condition(item[0], version):
             break
         result.append(item[1])
 
+    result.reverse()
     return result
 
 
 def _down_up(self, version, condition):
     """Finds first package from down to up that satisfies condition."""
     result = []
-    for item in self.item_slice(version, None):
+    items = iter(self.item_slice(version, None))
+    bound = next(items, None)
+    if bound is None:
+        return result
+    if condition(bound[0], version):
+        result.append(bound[1])
+
+    for item in items:
         if not condition(item[0], version):
             break
         result.append(item[1])
@@ -53,11 +69,12 @@ def _equal(tree, version):
     """Gets the package with specified version."""
     if version in tree:
         return [tree[version]]
+    return []
 
 
-def _newest(tree, _):
+def _any(tree, _):
     """Gets the package with max version."""
-    return [tree.max_item()[1]]
+    return list(tree.values())
 
 
 class Index(object):
@@ -72,7 +89,7 @@ class Index(object):
     """
 
     operators = {
-        None: _newest,
+        None: _any,
         "lt": _make_operator(_top_down, operator.lt),
         "le": _make_operator(_top_down, operator.le),
         "gt": _make_operator(_down_up, operator.gt),
