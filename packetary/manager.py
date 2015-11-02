@@ -263,9 +263,11 @@ class RepositoryManager(object):
                         candidates = index.find_all(rel.name, rel.version)
                         found = False
                         for cand in candidates:
-                            if cand != pkg and cand not in resolved:
+                            if cand == pkg:
+                                continue
+                            found = True
+                            if cand not in resolved:
                                 stack.append((cand, cand.requires))
-                                found = True
 
                         if found:
                             break
