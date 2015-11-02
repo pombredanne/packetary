@@ -261,10 +261,13 @@ class RepositoryManager(object):
                             break
                         # use all packages that meets depends
                         candidates = index.find_all(rel.name, rel.version)
-                        if len(candidates) > 0:
-                            for cnd in candidates:
-                                if cnd != pkg and cnd not in resolved:
-                                    stack.append((cnd, cnd.requires))
+                        found = False
+                        for cand in candidates:
+                            if cand != pkg and cand not in resolved:
+                                stack.append((cand, cand.requires))
+                                found = True
+
+                        if found:
                             break
                 else:
                     unresolved.add(require)
