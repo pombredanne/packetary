@@ -134,13 +134,21 @@ class TestRepositoryManager(base.TestCase):
             (x.name for x in packages)
         )
 
-    def test_clone_repository_without_depends(self):
+    def test_clone_repositories_as_is(self):
         driver = mock.MagicMock()
         driver.get_repository.side_effect = generator.gen_repository
-        driver.get_packages.side_effect = generator.gen_package
+        driver.get_packages.side_effect = [
+            generator.gen_package(1, requires=None),
+            generator.gen_package(2, requires=None)
+        ]
+        driver.copy_package.side_effect = [0, 1]
         manager = RepositoryManager(TestDriverAdapter(driver), "x86_64")
-        stats = manager.clone_repository("file:///repo1", "/repo2", keep_existing=True)
-        self.assertEqual(1, stats.total)
+        stats = manager.clone_repositories(["file:///repo1"], "/mirror", keep_existing=True)
+        self.assertEqual(2, stats.total)
+        self.assertEqual(1, stats.copied)
+        driver.copy_packages.assert_any_call()
+
+
 
         #
         # count = api.createmirror(

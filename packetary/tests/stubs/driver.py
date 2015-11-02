@@ -16,8 +16,6 @@
 
 import copy
 
-from packetary.objects import CopyStatistics
-
 
 class TestDriverAdapter(object):
     def __init__(self, driver):
@@ -51,13 +49,9 @@ class TestDriverAdapter(object):
         result.destination = destination
         return result
 
-    def copy_packages(self, repository, packages, keep_existing=True):
-        stat = CopyStatistics()
+    def copy_packages(self, repository, packages, keep_existing, observer):
         for pkg in packages:
-            stat.on_package_copied(
-                self.driver.copy_package(repository, pkg, keep_existing)
-            )
-        return stat
+            observer(self.driver.copy_package(repository, pkg, keep_existing))
 
     def load_repositories(self, urls, arch, consumer):
         for parsed_url in self.parse_urls(urls):

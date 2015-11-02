@@ -37,6 +37,7 @@ class CopyStatistics(object):
 
         self.copied += other.copied
         self.total += other.total
+        return self
 
     def __add__(self, other):
         result = copy.copy(self)
