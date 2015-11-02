@@ -94,7 +94,7 @@ class RepositoryDriver(object):
                     self.logger.info("remove package - %s.", filepath)
                     os.remove(filepath)
 
-        self.load_packages(repository, consume_exist)
+        self.get_packages(repository, consume_exist)
         self.rebuild_repository(repository, packages)
 
     def copy_packages(self, repository, packages, keep_existing=True):
