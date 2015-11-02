@@ -19,7 +19,7 @@ class Repository(object):
     def __init__(self, name, url, architecture, origin):
         """Initialises.
 
-        :param name: the repository`s name, should be unique
+        :param name: the repository`s name, may be tuple
         :param url: the repository`s URL
         :param architecture: the repository`s architecture
         :param origin: the repository`s origin
@@ -28,6 +28,16 @@ class Repository(object):
         self.url = url
         self.architecture = architecture
         self.origin = origin
+
+    def __str__(self):
+        if isinstance(self.name, tuple):
+            return ".".join(self.name)
+        return str(self.name)
+
+    def __unicode__(self):
+        if isinstance(self.name, tuple):
+            return u".".join(self.name)
+        return unicode(self.name, "utf8")
 
     def __copy__(self):
         """Creates shallow copy of package."""
