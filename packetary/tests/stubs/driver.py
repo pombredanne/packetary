@@ -42,13 +42,6 @@ class TestDriverAdapter(object):
         )
         self.idx += 1
 
-    def clone_repository(self, repository, destination,
-                         source=False, locale=False):
-        self.driver.clone_repository(repository, destination, source, locale)
-        result = copy.copy(repository)
-        result.destination = destination
-        return result
-
     def copy_packages(self, repository, packages, keep_existing, observer):
         for pkg in packages:
             observer(self.driver.copy_package(repository, pkg, keep_existing))
@@ -65,7 +58,7 @@ class TestDriverAdapter(object):
                            source=False, locale=False):
         result = []
         for r in repositories:
-            result.append(self.clone_repository(
+            result.append(self.driver.clone_repository(
                 r, destination, source, locale
             ))
         return result

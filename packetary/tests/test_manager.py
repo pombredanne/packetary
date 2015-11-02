@@ -136,35 +136,49 @@ class TestRepositoryManager(base.TestCase):
 
     def test_clone_repositories_as_is(self):
         driver = mock.MagicMock()
-        driver.get_repository.side_effect = generator.gen_repository
-        driver.get_packages.side_effect = [
-            generator.gen_package(1, requires=None),
-            generator.gen_package(2, requires=None)
+        repo = generator.gen_repository()
+        mirror = generator.gen_repository()
+        packages = [
+            generator.gen_package(1, repository=repo, requires=None),
+            generator.gen_package(2, repository=repo, requires=None)
         ]
+        driver.get_repository.side_effect = [
+            repo
+        ]
+        driver.clone_repository.return_value = mirror
+        driver.get_packages.return_value = packages
         driver.copy_package.side_effect = [0, 1]
         manager = RepositoryManager(TestDriverAdapter(driver), "x86_64")
-        stats = manager.clone_repositories(["file:///repo1"], "/mirror", keep_existing=True)
+        stats = manager.clone_repositories(
+            ["file:///repo1"], "/mirror", keep_existing=True
+        )
         self.assertEqual(2, stats.total)
         self.assertEqual(1, stats.copied)
-        driver.copy_packages.assert_any_call()
+        for pkg in packages:
+            driver.copy_package.assert_any_call(mirror, pkg, True)
 
-
-
-        #
-        # count = api.createmirror(
-        #     self.context,
-        #     "test", "x86_64",
-        #     "target",
-        #     "file:///origin",
-        #     "file:///debs",
-        #     ["requires-1",
-        #      "package-0"],
-        #     True
-        # )
-        # repo_class.assert_called_once_with(
-        #     self.context, "test", "x86_64"
-        # )
-        # self.assertEqual(2, count)
+    def test_copy_minimal_subset_from_repository(self):
+        driver = mock.MagicMock()
+        repo = generator.gen_repository()
+        mirror = generator.gen_repository()
+        packages = [
+            generator.gen_package(1, repository=repo, requires=None),
+            generator.gen_package(2, repository=repo, requires=None)
+        ]
+        driver.get_repository.side_effect = [
+            repo
+        ]
+        driver.clone_repository.return_value = mirror
+        driver.get_packages.return_value = packages
+        driver.copy_package.side_effect = [0, 1]
+        manager = RepositoryManager(TestDriverAdapter(driver), "x86_64")
+        stats = manager.clone_repositories(
+            ["file:///repo1"], "/mirror", keep_existing=True
+        )
+        self.assertEqual(2, stats.total)
+        self.assertEqual(1, stats.copied)
+        for pkg in packages:
+            driver.copy_package.assert_any_call(mirror, pkg, True)
 
 #  repos, packages = self._load_repositories_with_packages(
 #             origin, debs, bootstrap

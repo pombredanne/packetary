@@ -259,10 +259,11 @@ class RepositoryManager(object):
                     if rel not in unresolved:
                         if pkg_filter(rel.name, rel.version) is not None:
                             break
-                        candidate = index.find(rel.name, rel.version)
-                        if candidate is not None and candidate != pkg:
-                            if candidate not in resolved:
-                                stack.append((candidate, candidate.requires))
+                        candidates = index.find_all(rel.name, rel.version)
+                        if len(candidates) > 0:
+                            for cnd in candidates:
+                                if cnd != pkg and cnd not in resolved:
+                                    stack.append((cnd, cnd.requires))
                             break
                 else:
                     unresolved.add(require)

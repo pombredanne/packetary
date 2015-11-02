@@ -29,37 +29,35 @@ def _make_operator(direction, op):
 
 def _top_down(tree, version, condition):
     """Finds first package from top to down that satisfies condition."""
-    result = None
+    result = []
     for item in tree.item_slice(None, version, reverse=True):
         if not condition(item[0], version):
             break
-        result = item
+        result.append(item[1])
 
-    if result is not None:
-        return result[1]
+    return result
 
 
 def _down_up(self, version, condition):
     """Finds first package from down to up that satisfies condition."""
-    result = None
+    result = []
     for item in self.item_slice(version, None):
         if not condition(item[0], version):
             break
-        result = item
+        result.append(item[1])
 
-    if result is not None:
-        return result[1]
+    return result
 
 
 def _equal(tree, version):
     """Gets the package with specified version."""
     if version in tree:
-        return tree[version]
+        return [tree[version]]
 
 
 def _newest(tree, _):
     """Gets the package with max version."""
-    return tree.max_item()[1]
+    return [tree.max_item()[1]]
 
 
 class Index(object):
@@ -113,13 +111,25 @@ class Index(object):
         :param version: the range of versions.
         :return: the package if it is found, otherwise None
         """
+        candidates = self.find_all(name, version)
+        if len(candidates) > 0:
+            return candidates[-1]
+        return None
+
+    def find_all(self, name, version):
+        """Finds the packages by name and range of versions.
+
+        :param name: the package`s name.
+        :param version: the range of versions.
+        :return: the list of suitable packages
+        """
 
         if name in self.packages:
-            p = self._find_version(
+            candidates = self._find_versions(
                 self.packages[name], version
             )
-            if p is not None:
-                return p
+            if len(candidates) > 0:
+                return candidates
 
         if name in self.obsoletes:
             return self._resolve_relation(
@@ -154,11 +164,11 @@ class Index(object):
         """
         for key, candidate in relations.iter_items(reverse=True):
             if candidate.version.has_intersection(version):
-                return self.packages[key[0]][key[1]]
+                return [self.packages[key[0]][key[1]]]
         return None
 
     @staticmethod
-    def _find_version(versions, version):
+    def _find_versions(versions, version):
         """Searches accurate version.
 
         Search for the highest version out of intersection
