@@ -97,21 +97,20 @@ class RepositoryDriver(object):
         self.get_packages(repository, consume_exist)
         self.rebuild_repository(repository, packages)
 
-    def copy_packages(self, repository, packages, keep_existing=True):
+    def copy_packages(self, repository, packages, keep_existing, observer):
         """Copies packages to repository.
 
         :param repository: the target repository
         :param packages: the set of packages
-        :return: statistics
+        :param keep_existing: see assign_packages for more details
+        :param observer: the package copying process observer
         """
-        stat = CopyStatistics()
         with self.context.async_section() as section:
             for package in packages:
                 section.execute(
-                    self._copy_package, repository, package, stat
+                    self._copy_package, repository, package, observer
                 )
         self.assign_packages(repository, packages, keep_existing)
-        return stat
 
     def load_repositories(self, urls, arch, consumer):
         """Loads the repository objects from url.
@@ -154,7 +153,7 @@ class RepositoryDriver(object):
         """Shortcut for context.connection."""
         return self.context.connection
 
-    def _copy_package(self, target, package, stat):
+    def _copy_package(self, target, package, observer):
         """Synchronises remote file to local fs."""
         dst_path = os.path.join(target.url, package.filename)
         src_path = urljoin(package.repository.url, package.filename)
@@ -163,4 +162,4 @@ class RepositoryDriver(object):
         )
         if package.filesize < 0:
             package.filesize = bytes_copied
-        stat.on_package_copied(bytes_copied)
+        observer(bytes_copied)

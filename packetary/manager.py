@@ -159,8 +159,8 @@ class RepositoryManager(object):
         for repo, packages in six.iteritems(package_groups):
             mirror = mirros[repo]
             logger.info("copy packages from - %s", repo)
-            stat += self.driver.copy_packages(
-                mirror, packages, keep_existing
+            self.driver.copy_packages(
+                mirror, packages, keep_existing, stat.on_package_copied
             )
         return stat
 

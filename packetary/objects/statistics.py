@@ -33,10 +33,7 @@ class CopyStatistics(object):
 
     def __iadd__(self, other):
         if not isinstance(other, CopyStatistics):
-            raise TypeError(
-                "incompatible types <type 'CopyStatistics'> and {0}"
-                .format(type(other))
-            )
+            raise TypeError
 
         self.copied += other.copied
         self.total += other.total
