@@ -29,9 +29,9 @@ logger = logging.getLogger(__package__)
 _DEFAULT_ARCHITECTURE = "x86_64"
 
 
-class CloneCommand(BaseCommand):
+class CreateCommand(BaseCommand):
     def get_parser(self, prog_name):
-        parser = super(CloneCommand, self).get_parser(prog_name)
+        parser = super(CreateCommand, self).get_parser(prog_name)
         parser.add_argument(
             "-d", "--no-default",
             dest="set_default",
@@ -165,7 +165,7 @@ class CloneCommand(BaseCommand):
                     )
                 )
 
-            total += repo_manager.clone(
+            total += repo_manager.clone_repositories(
                 repository_urls,
                 destination,
                 deps,

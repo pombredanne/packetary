@@ -70,7 +70,7 @@ class CloneCommand(BaseRepoCommand):
     def take_repo_action(self, manager, parsed_args):
         """Overrides base class method."""
 
-        stat = manager.clone(
+        stat = manager.clone_repositories(
             parsed_args.origins,
             parsed_args.destination,
             parsed_args.requires,

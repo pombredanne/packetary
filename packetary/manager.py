@@ -127,8 +127,8 @@ class RepositoryManager(object):
         )
         return packages
 
-    def clone_repository(self, origin, destination, debs=None,
-                         bootstrap=None, keep_existing=True):
+    def clone_repositories(self, origin, destination, debs=None,
+                           bootstrap=None, keep_existing=True):
         """Creates clone of repository(es).
 
         :param destination: the destination folder
