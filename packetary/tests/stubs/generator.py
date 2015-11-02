@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from packetary import objects
 
 
@@ -22,10 +24,11 @@ def gen_repository(name="test", url="file:///test",
     return objects.Repository(name, url, architecture, origin)
 
 
-def gen_relation(name="test", version=None):
+def gen_relation(name="test", version=None, alternative=None):
     return [
         objects.PackageRelation(
-            name=name, version=objects.VersionRange(version)
+            name=name, version=objects.VersionRange(version),
+            alternative=alternative
         )
     ]
 

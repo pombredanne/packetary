@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #    Copyright 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,22 +15,13 @@
 #    under the License.
 
 
-class Repository(object):
-    """Structure to describe repository object."""
+class Executor(object):
+    def __enter__(self):
+        return self
 
-    def __init__(self, name, url, architecture, origin):
-        """Initialises.
+    def __exit__(self, *_):
+        return False
 
-        :param name: the repository`s name, should be unique
-        :param url: the repository`s URL
-        :param architecture: the repository`s architecture
-        :param origin: the repository`s origin
-        """
-        self.name = name
-        self.url = url
-        self.architecture = architecture
-        self.origin = origin
-
-    def __copy__(self):
-        """Creates shallow copy of package."""
-        return Repository(**self.__dict__)
+    @staticmethod
+    def execute(f, *args, **kwargs):
+        return f(*args, **kwargs)

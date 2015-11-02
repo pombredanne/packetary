@@ -23,6 +23,7 @@ import six
 
 
 def _make_operator(direction, op):
+    """Makes search operator from low-level operation and search direction."""
     return functools.partial(direction, condition=op)
 
 
@@ -61,12 +62,16 @@ def _newest(tree, _):
     return tree.max_item()[1]
 
 
-def _none(*_):
-    return None
-
-
 class Index(object):
-    """The index for set of packages for fast search."""
+    """The search index for packages.
+
+    Builds three search-indexes:
+    - index of packages with versions.
+    - index of virtual packages (provides).
+    - index of obsoleted packages (obsoletes).
+
+    Uses to find package by name and range of versions.
+    """
 
     operators = {
         None: _newest,
@@ -83,9 +88,11 @@ class Index(object):
         self.provides = defaultdict(FastRBTree)
 
     def __iter__(self):
+        """Iterates over all packages including versions."""
         return self.get_all()
 
     def __len__(self, _reduce=six.functools.reduce):
+        """Returns the total number of packages with versions."""
         return _reduce(
             lambda x, y: x + len(y),
             six.itervalues(self.packages),
@@ -93,17 +100,17 @@ class Index(object):
         )
 
     def get_all(self):
-        """Gets sequence from all of the packages."""
+        """Gets sequence from all of packages including versions."""
 
         for versions in six.itervalues(self.packages):
             for version in versions.values():
                 yield version
 
     def find(self, name, version):
-        """Finds the package by name and version.
+        """Finds the package by name and range of versions.
 
         :param name: the package`s name.
-        :param version: the package`s version.
+        :param version: the range of versions.
         :return: the package if it is found, otherwise None
         """
 
@@ -125,7 +132,10 @@ class Index(object):
             )
 
     def add(self, package):
-        """Adds new package to index."""
+        """Adds new package to indexes.
+
+        :param package: the package object.
+        """
         self.packages[package.name][package.version] = package
         key = package.name, package.version
 
@@ -136,7 +146,12 @@ class Index(object):
             self.provides[provide.name][key] = provide
 
     def _resolve_relation(self, relations, version):
-        """Resolve relation according to relations map."""
+        """Resolve relation according to relations index.
+
+        :param relations: the index of relations
+        :param version: the range of versions
+        :return: package if found, otherwise None
+        """
         for key, candidate in relations.iter_items(reverse=True):
             if candidate.version.has_intersection(version):
                 return self.packages[key[0]][key[1]]
@@ -144,12 +159,21 @@ class Index(object):
 
     @staticmethod
     def _find_version(versions, version):
-        """Finds concrete version by relation."""
+        """Searches accurate version.
+
+        Search for the highest version out of intersection
+        of existing and required range of versions.
+
+        :param versions: the existing versions
+        :param version: the required range of versions
+        :return: package if found, otherwise None
+        """
+
         try:
             op = Index.operators[version.op]
         except KeyError:
             raise ValueError(
-                "Undefined operation for versions relation: {0}"
+                "Unsupported operation: {0}"
                 .format(version.op)
             )
         return op(versions, version.edge)

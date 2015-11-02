@@ -217,12 +217,12 @@ class TestRetryHandler(base.TestCase):
         self.handler.http_error(
             request, mock.MagicMock(), 500, "error", mock.MagicMock()
         )
-        logger.warning.assert_called_with(
+        logger.error.assert_called_with(
             "fail request: %s - %d(%s), retries left - %d.",
-            "/test", 500, "error", 0
+            "/test", 500, "error", 1
         )
         self.handler.http_error(
-            request, mock.MagicMock(), 500, "error", mock.MagicMock()
+            request, mock.MagicMock(), 404, "error", mock.MagicMock()
         )
         self.handler.parent.open.assert_called_once_with(request)
 

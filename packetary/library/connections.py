@@ -104,16 +104,22 @@ class RetryHandler(urllib.BaseHandler):
 
     def http_error(self, req, fp, code, msg, hdrs):
         """Checks error code and retries request if it is allowed."""
-        if code >= 500 and req.retries_left > 0:
+        logger.error(
+            "fail request: %s - %d(%s), retries left - %d.",
+            req.get_full_url(), code, msg, req.retries_left
+        )
+        if req.retries_left > 0 and is_retryable_http_error(code):
             req.retries_left -= 1
-            logger.warning(
-                "fail request: %s - %d(%s), retries left - %d.",
-                req.get_full_url(), code, msg, req.retries_left
-            )
             return self.parent.open(req)
 
     https_request = http_request
     https_response = http_response
+
+
+def is_retryable_http_error(code):
+    """Checks that http error can be retried."""
+    return code == http_client.NOT_FOUND or\
+        code >= http_client.INTERNAL_SERVER_ERROR
 
 
 class ConnectionsManager(object):

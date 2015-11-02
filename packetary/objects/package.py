@@ -16,14 +16,15 @@
 
 from collections import namedtuple
 
-from packetary.objects.base import PlainObject
+from packetary.objects.base import ComparableObject
 
 
 FileChecksum = namedtuple("FileChecksum", ("md5", "sha1", "sha256"))
 
 
-class Package(PlainObject):
+class Package(ComparableObject):
     """Structure to describe package object."""
+
     def __init__(self, repository, name, version, filename,
                  filesize, checksum, mandatory=False,
                  requires=None, provides=None, obsoletes=None):
@@ -51,6 +52,10 @@ class Package(PlainObject):
         self.obsoletes = obsoletes or []
         self.mandatory = mandatory
 
+    def __copy__(self):
+        """Creates shallow copy of package."""
+        return Package(**self.__dict__)
+
     def __str__(self):
         return "%s %s" % (self.name, self.version)
 
@@ -60,7 +65,8 @@ class Package(PlainObject):
     def __hash__(self):
         return hash((self.name, self.version))
 
-    def __cmp__(self, other):
+    def cmp(self, other):
+        """Compares with other Package object."""
         if self.name < other.name:
             return -1
         if self.name > other.name:

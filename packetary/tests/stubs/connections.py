@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #    Copyright 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,23 +14,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 
-class Repository(object):
-    """Structure to describe repository object."""
 
-    def __init__(self, name, url, architecture, origin):
-        """Initialises.
+class Connections(object):
+    def __init__(self):
+        self.connection = mock.MagicMock()
 
-        :param name: the repository`s name, should be unique
-        :param url: the repository`s URL
-        :param architecture: the repository`s architecture
-        :param origin: the repository`s origin
-        """
-        self.name = name
-        self.url = url
-        self.architecture = architecture
-        self.origin = origin
+    def __enter__(self):
+        return self.connection
 
-    def __copy__(self):
-        """Creates shallow copy of package."""
-        return Repository(**self.__dict__)
+    def __exit__(self, *_):
+        return False
+
+    def get(self, timeout=None):
+        return self

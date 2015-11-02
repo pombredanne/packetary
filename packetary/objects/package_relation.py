@@ -16,11 +16,20 @@
 
 import operator
 
-from packetary.objects.base import PlainObject
 
+class VersionRange(object):
+    """Describes the range of versions.
 
-class VersionRange(PlainObject):
+    Range of version is compare operation and edge.
+    the compare operation can be one of:
+    equal, greater, less, greater or equal, less or equal.
+    """
     def __init__(self, op=None, edge=None):
+        """Initialises.
+
+        :param op: the name of operator to compare.
+        :param edge: the edge of versions.
+        """
         if isinstance(op, (list, tuple)):
             if len(op) > 1:
                 edge = op[1]
@@ -30,6 +39,13 @@ class VersionRange(PlainObject):
 
     def __hash__(self):
         return hash((self.op, self.edge))
+
+    def __eq__(self, other):
+        if not isinstance(other, VersionRange):
+            return False
+
+        return self.op == other.op and \
+            self.edge == other.edge
 
     def __str__(self):
         if self.edge is not None:
@@ -41,27 +57,12 @@ class VersionRange(PlainObject):
             return u"%s %s" % (self.op, self.edge)
         return u"any"
 
-    def __cmp__(self, other):
-        if self.op is None:
-            if other.op is None:
-                return 0
-            return -1
-        if other.op is None:
-            return 1
-        if self.op < other.op:
-            return -1
-        if self.op > other.op:
-            return 1
-        if self.edge < other.edge:
-            return -1
-        if self.edge > other.edge:
-            return 1
-        return 0
-
     def has_intersection(self, other):
+        """Checks that 2 ranges has intersection."""
+
         if not isinstance(other, VersionRange):
             raise TypeError(
-                "Unordered type <type 'VersionRelation'> and %s" % type(other)
+                "Unorderable type <type 'VersionRange'> and %s" % type(other)
             )
 
         if self.op is None or other.op is None:
@@ -91,8 +92,13 @@ class VersionRange(PlainObject):
         )
 
 
-class PackageRelation(PlainObject):
-    """Describes the package`s relation."""
+class PackageRelation(object):
+    """Describes the package`s relation.
+
+    Relation includes the name of required package
+    and range of versions that satisfies requirement.
+    """
+
     def __init__(self, name, version=None, alternative=None):
         """Initialises.
 
@@ -120,6 +126,16 @@ class PackageRelation(PlainObject):
             yield r
             r = r.alternative
 
+    def __hash__(self):
+        return hash((self.name, self.version))
+
+    def __eq__(self, other):
+        if not isinstance(other, PackageRelation):
+            return False
+
+        return self.name == other.name and \
+            self.version == other.version
+
     def __str__(self):
         if self.alternative is None:
             return "%s (%s)" % (self.name, self.version)
@@ -129,17 +145,3 @@ class PackageRelation(PlainObject):
         if self.alternative is None:
             return u"%s (%s)" % (self.name, self.version)
         return u"%s (%s) | %s" % (self.name, self.version, self.alternative)
-
-    def __hash__(self):
-        return hash((self.name, self.version))
-
-    def __cmp__(self, other):
-        if self.name < other.name:
-            return -1
-        if self.name > other.name:
-            return 1
-        if self.version < other.version:
-            return -1
-        if self.version > other.version:
-            return 1
-        return 0

@@ -232,32 +232,37 @@ class DebRepositoryDriver(RepositoryDriver):
                     meta["Suite"] = repository.name[0]
                     meta["Codename"] = repository.name[0].split("-")[0]
                     meta["Description"] = "The packages repository."
-                    for x in _CHECKSUM_METHODS:
-                        meta[x] = list()
+                    for m in _CHECKSUM_METHODS:
+                        meta[m] = []
+
                     for fpath, size, cs in _get_files_info(repository):
                         fname = fpath[len(path) + 1:]
                         for m, checksum in cs:
-                            meta.setdefault(m, []).append({
-                                m.lower(): checksum,
+                            meta[m].append(deb822.Deb822Dict({
+                                m: checksum,
                                 "size": size,
                                 "name": fname
-                            })
+                            }))
                 else:
                     self.logger.debug("update suite index %s.", release_path)
+                    for m in _CHECKSUM_METHODS:
+                        if m not in meta:
+                            meta[m] = []
+
                     for fpath, size, cs in _get_files_info(repository):
                         fname = fpath[len(path) + 1:]
                         for m, checksum in cs:
-                            for v in meta.setdefault(m, []):
+                            for v in meta[m]:
                                 if v["name"] == fname:
+                                    v[m] = checksum
                                     v["size"] = size
-                                    v[m.lower()] = checksum
                                     break
                             else:
-                                meta[m].append({
-                                    m.lower(): checksum,
+                                meta[m].append(deb822.Deb822Dict({
+                                    m: checksum,
                                     "size": size,
                                     "name": fpath[len(path) + 1:]
-                                })
+                                }))
 
                 meta["Date"] = datetime.datetime.now().strftime(
                     "%a, %d %b %Y %H:%M:%S %Z"

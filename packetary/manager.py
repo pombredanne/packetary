@@ -25,13 +25,14 @@ from packetary.library.connections import ConnectionsManager
 from packetary.library.executor import AsynchronousSection
 from packetary.objects import Index
 from packetary.objects import PackageRelation
+from packetary.objects.statistics import CopyStatistics
 
 
 logger = logging.getLogger(__package__)
 
 
 class UnresolvedWarning(UserWarning):
-    """Warning about unresolved packages."""
+    """Warning about unresolved depends."""
     pass
 
 
@@ -39,7 +40,7 @@ class Configuration(object):
     """The configuration object."""
 
     def __init__(self, http_proxy=None, https_proxy=None,
-                 retries_count=0, thread_count=None,
+                 retries_count=0, thread_count=0,
                  ignore_error_count=0):
         """Initialises.
 
@@ -59,8 +60,6 @@ class Configuration(object):
 
 
 class Context(object):
-    DEFAULT_THREAD_COUNT = 1
-
     def __init__(self, config):
         """Initialises.
         :param config: the configuration
@@ -70,7 +69,7 @@ class Context(object):
             secure_proxy=config.https_proxy,
             retries_num=config.retries_count
         )
-        self._thread_count = config.thread_count or self.DEFAULT_THREAD_COUNT
+        self._thread_count = config.thread_count
         self._ignore_error_count = config.ignore_error_count
 
     @property
@@ -93,13 +92,19 @@ class RepositoryManager(object):
 
     def __init__(self, driver, arch):
         """Initialises.
+
         :param driver: the repo driver instance"""
         self.driver = driver
         self.arch = arch
 
     @classmethod
-    def create(cls, config, name, arch):
-        """Creates the repository manager."""
+    def create(cls, config, kind, arch):
+        """Creates the repository manager.
+
+        :param config: the configuration
+        :param kind: the kind of repository(deb, yum, etc)
+        :param arch: the architecture of repository (x86_64 or i386)
+        """
         if cls._drivers is None:
             cls._drivers = stevedore.ExtensionManager("packetary.drivers")
         if isinstance(config, Context):
@@ -107,13 +112,14 @@ class RepositoryManager(object):
         else:
             context = Context(config)
 
-        return cls(cls._drivers[name].plugin(context), arch)
+        return cls(cls._drivers[kind].plugin(context), arch)
 
     def get_packages(self, origin, debs=None, bootstrap=None):
         """Gets the list of packages from repository(es).
+
         :param origin: the url(s) to origin repository
         :param debs: the url(s) of repositories to get dependency
-        :param bootstrap: the additional list of relations
+        :param bootstrap: the list of additional package names
         :return: set of packages
         """
         _, packages = self._load_repositories_with_packages(
@@ -121,19 +127,23 @@ class RepositoryManager(object):
         )
         return packages
 
-    def clone(self, origin, destination, debs=None,
-              bootstrap=None, keep_existing=True):
-        """Creates mirror for repository(es).
+    def clone_repository(self, origin, destination, debs=None,
+                         bootstrap=None, keep_existing=True):
+        """Creates clone of repository(es).
+
         :param destination: the destination folder
         :param origin: the url(s) to origin repository
         :param debs: the url(s) of repositories to get dependency
-        :param bootstrap: the additional list of relations
-        :param keep_existing: Remove local packages that does not exist in repo.
-        :return: tuple(actually copied, total packages count)
+        :param bootstrap: the list of additional package names
+        :param keep_existing: If False - local packages that does not exist
+                              in original repo will be removed.
+        :return: Statistics copied and total packages
         """
         repos, packages = self._load_repositories_with_packages(
             origin, debs, bootstrap
         )
+
+        # mirror -> origin
         mirros = dict(six.moves.zip(
             repos,
             self.driver.clone_repositories(
@@ -145,30 +155,18 @@ class RepositoryManager(object):
         for pkg in packages:
             package_groups[pkg.repository].add(pkg)
 
-        if keep_existing:
-            def consume_exist(p):
-                package_groups[p.repository].add(p)
-
-        else:
-            def consume_exist(p):
-                if p not in package_groups[p.repository]:
-                    filepath = os.path.join(repo.url, packages.filename)
-                    logger.info("remove package - %s.", filepath)
-                    os.remove(repo.url + packages.filename)
-
-        self.driver.load_packages(
-            six.itervalues(mirros),
-            consume_exist
-        )
-
-        stat = [0, 0]
+        stat = CopyStatistics()
         for repo, packages in six.iteritems(package_groups):
-            logger.info("update repository: %s", repo.name)
-            self.driver.copy_packages(mirros[repo], packages, stat)
+            mirror = mirros[repo]
+            logger.info("copy packages from - %s", repo)
+            stat += self.driver.copy_packages(
+                mirror, packages, keep_existing
+            )
         return stat
 
     def get_unresolved_depends(self, url):
         """Gets list of unresolved depends for repository(es).
+
         :param url: the url(s) of repository
         :return: list of unresolved relations
         """
@@ -185,13 +183,9 @@ class RepositoryManager(object):
 
         :param origin: the url(s) to origin repository
         :param debs: the url(s) of repositories to get dependency
-        :param bootstrap: the additional list of relations
+        :param bootstrap: the list of additional package names
         :return: the number of copied packages
         """
-        packages = Index()
-        repos = self._load_repositories(origin)
-        self.driver.load_packages(repos, packages.add)
-
         if debs is not None:
             rdepends = Index()
             self.driver.load_packages(
@@ -205,26 +199,36 @@ class RepositoryManager(object):
         if bootstrap is not None:
             unresolved.update(PackageRelation(r.split()) for r in bootstrap)
 
-        subset = self._get_minimal_subset(packages, rdepends, unresolved)
+        repos = self._load_repositories(origin)
+        if rdepends is not None or len(unresolved) > 0:
+            packages = Index()
+            self.driver.load_packages(repos, packages.add)
+            packages = self._get_minimal_subset(packages, rdepends, unresolved)
+        else:
+            packages = set()
+            self.driver.load_packages(repos, packages.add)
+
         if len(unresolved) > 0:
             msg = "unresolved depends:\n {0}\n".format(
                 ", ".join(six.text_type(x) for x in sorted(unresolved))
             )
             warnings.warn(UnresolvedWarning(msg))
-        return repos, subset
+        return repos, packages
 
     def _load_repositories(self, urls):
         """Gets the sequence of repositories from URLs."""
-        if isinstance(urls, six.text_type):
+        if isinstance(urls, six.string_types):
             urls = [urls]
         repos = set()
         self.driver.load_repositories(urls, self.arch, repos.add)
         return repos
 
-    def _get_minimal_subset(self, packages, rdepends, requires):
+    @staticmethod
+    def _get_minimal_subset(index, rdepends, requires):
         """Gets the sub-set of required packages.
-        :param packages: the set of packages
-        :param rdepends: the master index,
+
+        :param index: the packages index
+        :param rdepends: the index of reversed depends,
                        all packages from master index will be skipped.
         :param requires: the set of requirements.
                          Note. This set will be updated.
@@ -238,12 +242,12 @@ class RepositoryManager(object):
                 pass
         else:
             pkg_filter = rdepends.find
-            self._get_unresolved_depends(rdepends, requires)
+            RepositoryManager._get_unresolved_depends(rdepends, requires)
 
         stack = list()
         stack.append((None, requires))
 
-        for pkg in packages:
+        for pkg in index:
             if pkg.mandatory:
                 stack.append((pkg, pkg.requires))
 
@@ -255,7 +259,7 @@ class RepositoryManager(object):
                     if rel not in unresolved:
                         if pkg_filter(rel.name, rel.version) is not None:
                             break
-                        candidate = packages.find(rel.name, rel.version)
+                        candidate = index.find(rel.name, rel.version)
                         if candidate is not None and candidate != pkg:
                             if candidate not in resolved:
                                 stack.append((candidate, candidate.requires))
@@ -269,9 +273,10 @@ class RepositoryManager(object):
         return resolved
 
     @staticmethod
-    def _get_unresolved_depends(packages, unresolved=None):
+    def _get_unresolved_depends(index, unresolved=None):
         """Gets the set of unresolved depends.
-        :param packages: the unresolved depends.
+
+        :param index: the packages index.
             Note: It will be updated if it is not None.
         :return: the set of unresolved depends.
         """
@@ -279,11 +284,11 @@ class RepositoryManager(object):
         if unresolved is None:
             unresolved = set()
 
-        for pkg in packages:
+        for pkg in index:
             for require in pkg.requires:
                 for rel in require:
                     if rel not in unresolved:
-                        candidate = packages.find(rel.name, rel.version)
+                        candidate = index.find(rel.name, rel.version)
                         if candidate is not None and candidate != pkg:
                             break
                 else:

@@ -18,12 +18,13 @@ import copy
 import six
 
 from packetary.objects import PackageRelation
+from packetary.objects import VersionRange
 
 from packetary.tests import base
 from packetary.tests.stubs import generator
 
 
-class TestPlainObject(base.TestCase):
+class TestObjectBase(base.TestCase):
     def check_copy(self, origin):
         clone = copy.copy(origin)
         self.assertIsNot(origin, clone)
@@ -47,18 +48,26 @@ class TestPlainObject(base.TestCase):
         self.assertNotEqual(o2, o1)
         self.assertNotEqual(o1, None)
 
+    def check_hashable(self, o1, o2):
+        d = dict()
+        d[o1] = o2
+        d[o2] = o1
 
-class TestPackageObject(TestPlainObject):
+        self.assertIs(o2, d[o1])
+        self.assertIs(o1, d[o2])
+
+
+class TestPackageObject(TestObjectBase):
     def test_copy(self):
         self.check_copy(generator.gen_package(name="test1"))
 
     def test_ordering(self):
-        self.check_ordering(
+        self.check_ordering([
             generator.gen_package(name="test1", version=1),
             generator.gen_package(name="test1", version=2),
             generator.gen_package(name="test2", version=1),
             generator.gen_package(name="test2", version=2)
-        )
+        ])
 
     def test_equal(self):
         self.check_equal(
@@ -67,55 +76,46 @@ class TestPackageObject(TestPlainObject):
             generator.gen_package(name="test2", version=1)
         )
 
+    def test_hashable(self):
+        self.check_hashable(
+            generator.gen_package(name="test1", version=1),
+            generator.gen_package(name="test2", version=1)
+        )
 
-class TestRepositoryObject(TestPlainObject):
+
+class TestRepositoryObject(base.TestCase):
     def test_copy(self):
-        self.check_copy(generator.gen_repository())
-
-    def test_ordering(self):
-        self.check_ordering(
-            generator.gen_repository(name="test1", architecture="i386"),
-            generator.gen_repository(name="test1", architecture="x86_64"),
-            generator.gen_repository(name="test2", architecture="i386"),
-            generator.gen_repository(name="test2", architecture="x86_64")
-        )
-
-    def test_equal(self):
-        self.check_equal(
-            generator.gen_repository(name="test1"),
-            generator.gen_repository(name="test1"),
-            generator.gen_repository(name="test2"),
-        )
+        origin = generator.gen_repository()
+        clone = copy.copy(origin)
+        self.assertEqual(clone.name, origin.name)
+        self.assertEqual(clone.architecture, origin.architecture)
 
 
-class TestRelationObject(TestPlainObject):
-    def test_copy(self):
-        self.check_copy(generator.gen_relation()[0])
-
-    def test_ordering(self):
-        self.check_ordering(
-            generator.gen_relation("test1", ["eq", 1])[0],
-            generator.gen_relation("test1", ["eq", 2])[0],
-            generator.gen_relation("test2", ["le", 1])[0],
-            generator.gen_relation("test2", ["le", 2])[0]
-        )
-
+class TestRelationObject(TestObjectBase):
     def test_equal(self):
         self.check_equal(
             generator.gen_relation(name="test1"),
             generator.gen_relation(name="test1"),
-            generator.gen_relation(name="test2"),
+            generator.gen_relation(name="test2")
+        )
+
+    def test_hashable(self):
+        self.check_hashable(
+            generator.gen_relation(name="test1")[0],
+            generator.gen_relation(name="test1", version=["le", 1])[0]
         )
 
     def test_construct(self):
-        r = PackageRelation(["test", "le", 2, "test2", "ge", 3])
+        r = PackageRelation(["test", "le", 2, "test2", "ge", 3, "test3"])
         self.assertEqual("test", r.name)
         self.assertEqual("le", r.version.op)
         self.assertEqual(2, r.version.edge)
         self.assertEqual("test2", r.alternative.name)
         self.assertEqual("ge", r.alternative.version.op)
         self.assertEqual(3, r.alternative.version.edge)
-        self.assertIsNone(r.alternative.alternative)
+        self.assertEqual("test3", r.alternative.alternative.name)
+        self.assertEqual(VersionRange(), r.alternative.alternative.version)
+        self.assertIsNone(r.alternative.alternative.alternative)
 
     def test_iter(self):
         it = iter(PackageRelation(["test", "le", 2, "test2", "ge", 3]))
@@ -123,3 +123,63 @@ class TestRelationObject(TestPlainObject):
         self.assertEqual("test2", next(it).name)
         with self.assertRaises(StopIteration):
             next(it)
+
+
+class TestVersionRange(TestObjectBase):
+    def test_equal(self):
+        self.check_equal(
+            generator.gen_relation(name="test1"),
+            generator.gen_relation(name="test1"),
+            generator.gen_relation(name="test2")
+        )
+
+    def test_hashable(self):
+        self.check_hashable(
+            VersionRange(op="le"),
+            VersionRange(op="le", edge=3)
+        )
+
+    def test_parse(self):
+        v = VersionRange("le", 1)
+        self.assertEqual("le", v.op)
+        self.assertEqual(1, v.edge)
+        self.assertEqual(
+            VersionRange("ge", 2),
+            VersionRange(["ge", 2])
+        )
+
+    def __check_intersection(self, assertion, cases):
+        for data in cases:
+            v1 = VersionRange(*data[0])
+            v2 = VersionRange(*data[1])
+            assertion(
+                v1.has_intersection(v2), msg="%s and %s" % (v1, v2)
+            )
+            assertion(
+                v2.has_intersection(v1), msg="%s and %s" % (v2, v1)
+            )
+
+    def test_have_intersection(self):
+        cases = [
+            (("lt", 2), ("gt", 1)),
+            (("lt", 3), ("lt", 4)),
+            (("gt", 3), ("gt", 4)),
+            (("eq", 1), ("eq", 1)),
+            (("ge", 1), ("le", 1)),
+            (("eq", 1), ("lt", 2)),
+            ((None, None), ("le", 10)),
+        ]
+        self.__check_intersection(self.assertTrue, cases)
+
+    def test_does_not_have_intersection(self):
+        cases = [
+            (("lt", 2), ("gt", 2)),
+            (("ge", 2), ("lt", 2)),
+            (("gt", 2), ("le", 2)),
+            (("gt", 1), ("lt", 1)),
+        ]
+        self.__check_intersection(self.assertFalse, cases)
+
+    def test_intersection_is_typesafe(self):
+        with self.assertRaises(TypeError):
+            VersionRange("eq", 1).has_intersection(("eq", 1))

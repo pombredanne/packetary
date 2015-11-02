@@ -14,29 +14,47 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
+import six
 
-class PlainObject(object):
+
+@six.add_metaclass(abc.ABCMeta)
+class ComparableObject(object):
+    """Superclass for objects, that should be comparable.
+
+    Note: because python3 does not support __cmp__ slot, use
+    cmp method to implement all of compare methods.
+    """
+
+    @abc.abstractmethod
+    def cmp(self, other):
+        """Compares with other object.
+
+        :return: value is negative if if self < other, zero if self == other
+                 strictly positive if x > y
+        """
+
     def __lt__(self, other):
-        return self.__cmp__(other) < 0
+        return self.cmp(other) < 0
 
     def __le__(self, other):
-        return self.__cmp__(other) <= 0
+        return self.cmp(other) <= 0
 
     def __gt__(self, other):
-        return self.__cmp__(other) > 0
+        return self.cmp(other) > 0
 
     def __ge__(self, other):
-        return self.__cmp__(other) >= 0
+        return self.cmp(other) >= 0
 
     def __eq__(self, other):
         if other is self:
             return True
-        return isinstance(other, type(self)) and self.__cmp__(other) == 0
+        return isinstance(other, type(self)) and self.cmp(other) == 0
 
     def __ne__(self, other):
         if other is self:
             return False
-        return not isinstance(other, type(self)) or self.__cmp__(other) != 0
+        return not isinstance(other, type(self)) or self.cmp(other) != 0
 
-    def __copy__(self):
-        return type(self)(**self.__dict__)
+    def __cmp__(self, other):
+        return self.cmp(other)

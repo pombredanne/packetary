@@ -77,7 +77,9 @@ class CloneCommand(BaseRepoCommand):
             parsed_args.bootstrap,
             parsed_args.keep_existing
         )
-        self.app.stdout.write("Packages copied: {0}/{1}.\n".format(*stat))
+        self.app.stdout.write(
+            "Packages copied: {0.copied}/{0.total}.\n".format(stat)
+        )
 
 
 def debug(argv=None):

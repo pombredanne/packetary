@@ -16,6 +16,7 @@ import logging
 import os
 
 from cliff.command import Command as BaseCommand
+from packetary.objects.statistics import CopyStatistics
 
 from fuel_mirror.common.repo_url import get_url_parser
 from fuel_mirror.common.utils import filter_in_set
@@ -98,22 +99,22 @@ class CloneCommand(BaseCommand):
         :return: the result of take_repo_action
         :rtype: object
         """
-        repositories = dict()
-        stats = self.copy_repositories(parsed_args, repositories)
+        repo_configs = dict()
+        stats = self.copy_repositories(parsed_args, repo_configs)
         self.app.stdout.write("Packages processed: {0}/{1}\n".format(*stats))
         if parsed_args.apply:
             self.app.stdout.write("Updated clusters:\n")
-            self.update_clusters(repositories, parsed_args.env)
+            self.update_clusters(repo_configs, parsed_args.env)
         if parsed_args.set_default:
             self.app.stdout.write("Updated defaults:\n")
-            self.update_default_repos(repositories)
+            self.update_default_repos(repo_configs)
         self.app.stdout.write("Operation has been completed successfully.\n")
 
-    def copy_repositories(self, parsed_args, local_urls):
+    def copy_repositories(self, parsed_args, fuel_repos):
         """Copies repositories to local fs."""
         repo_url = self.app.config["http_base"]
         repo_folder = self.app.config["repo_folder"]
-        total = [0, 0]
+        total = CopyStatistics()
         for repo_config in self.filter_repositories(parsed_args):
             name = repo_config["name"]
             osname = repo_config["osname"]
@@ -149,30 +150,29 @@ class CloneCommand(BaseCommand):
                 deps = None
                 requires = None
 
-            urls = local_urls.setdefault(osname, list())
-            repositories = [
-                url_parser.format_url(baseurl, r, **self.app.versions)
-                for r in repo_config["repositories"]
-            ]
+            os_repos = fuel_repos.setdefault(osname, [])
+            repository_urls = []
+            for repo in repo_config["repositories"]:
+                repository_urls.append(
+                    url_parser.format_url(baseurl, repo, **self.app.versions)
+                )
+                os_repos.append(
+                    url_parser.get_repo_config(
+                        url_parser.get_name(name, repo),
+                        url_parser.format_url(
+                            localurl, repo, **self.app.versions
+                        )
+                    )
+                )
 
-            stats = repo_manager.clone(
-                repositories,
+            total += repo_manager.clone(
+                repository_urls,
                 destination,
                 deps,
                 requires
             )
-            urls.append(
-                url_parser.get_repo_config(
-                    url_parser.get_name(name, r),
-                    url_parser.format_url(
-                        localurl, r, **self.app.versions
-                    ),
-                )
-            )
             # optimisation for further access
             repo_config["baseurl"] = "file://" + destination
-            total[0] += stats[0]
-            total[1] += stats[1]
         return total
 
     def filter_repositories(self, parsed_args):
