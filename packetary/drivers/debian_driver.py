@@ -162,7 +162,6 @@ class DebRepositoryDriver(RepositoryDriver):
 
         index = os.path.join(path, "Packages")
         index_gz = os.path.join(path, "Packages.gz")
-        origin = "Origin: {0}\n".format(repository.origin).encode("utf8")
         count = 0
         with closing(open(index, "wb")) as fd1:
             with closing(gzip.open(index_gz, "wb")) as fd2:
@@ -170,13 +169,13 @@ class DebRepositoryDriver(RepositoryDriver):
                 for pkg in packages:
                     filename = os.path.join(repository.url, pkg.filename)
                     with closing(debfile.DebFile(filename)) as deb:
-                        content = deb.control.get_content(debfile.CONTROL_FILE)
-                    writer(content)
-                    writer(origin)
-                    writer("Size: {0}\n".format(pkg.filesize))
-                    writer("Filename: {0}\n".format(pkg.filename))
+                        debcontrol = deb.debcontrol()
+                    debcontrol.setdefault("Origin", repository.origin)
+                    debcontrol["Size"] = str(pkg.filesize)
+                    debcontrol["Filename"] = pkg.filename
                     for k, v in six.moves.zip(_CHECKSUM_METHODS, pkg.checksum):
-                        writer("{0}: {1}\n".format(k, v))
+                        debcontrol[k] = v
+                    writer(debcontrol.dump())
                     writer("\n")
                     count += 1
         self.logger.info("saved %d packages in %s", count, repository)
