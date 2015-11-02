@@ -166,7 +166,7 @@ class Index(object):
         for key, candidate in relations.iter_items(reverse=True):
             if candidate.version.has_intersection(version):
                 return [self.packages[key[0]][key[1]]]
-        return None
+        return []
 
     @staticmethod
     def _find_versions(versions, version):
