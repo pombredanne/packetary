@@ -67,10 +67,8 @@ class CloneCommand(BaseRepoCommand):
             help='The path to file with urls for origin repositories.')
         return parser
 
-    def take_repo_action(self, manager, parsed_args):
-        """Overrides base class method."""
-
-        stat = manager.clone_repositories(
+    def take_repo_action(self, api, parsed_args):
+        stat = api.clone_repositories(
             parsed_args.origins,
             parsed_args.destination,
             parsed_args.requires,

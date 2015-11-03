@@ -19,7 +19,7 @@ import abc
 from cliff import command
 import six
 
-from packetary import RepositoryManager
+from packetary import RepositoryApi
 from packetary.cli.commands.utils import make_display_attr_getter
 from packetary.cli.commands.utils import read_lines_from_file
 
@@ -67,20 +67,23 @@ class BaseRepoCommand(command.Command):
     def take_action(self, parsed_args):
         """See the Command.take_action.
 
+        :param parsed_args: the command-line arguments
         :return: the result of take_repo_action
         :rtype: object
         """
         return self.take_repo_action(
-            RepositoryManager.create(
+            RepositoryApi.create(
                 self.app_args, parsed_args.type, parsed_args.arch
             ),
             parsed_args
         )
 
     @abc.abstractmethod
-    def take_repo_action(self, manager, parsed_args):
+    def take_repo_action(self, api, parsed_args):
         """Takes action on repository.
 
+        :param api: the RepositoryApi instance
+        :param parsed_args: the command-line arguments
         :return: the action result
         """
 

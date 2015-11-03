@@ -27,41 +27,41 @@ def _make_operator(direction, op):
     return functools.partial(direction, condition=op)
 
 
-def _top_down(tree, version, condition):
-    """Finds first package from top to down that satisfies condition."""
-    result = []
+def _start_upperbound(versions, version, condition):
+    """Gets all versions from [start, version] that meet condition.
+
+    :param versions: the tree of versions.
+    :param version: the required version
+    :param condition: condition for search
+    :return: the list of found versions
+    """
+
+    result = list(versions.value_slice(None, version))
     try:
-        bound = tree.ceiling_item(version)
-        if bound[0] == version and condition(bound[0], version):
+        bound = versions.ceiling_item(version)
+        if condition(bound[0], version):
             result.append(bound[1])
-        upper = bound[0]
     except KeyError:
-        upper = version
-
-    for item in tree.item_slice(None, upper, reverse=True):
-        if not condition(item[0], version):
-            break
-        result.append(item[1])
-
-    result.reverse()
+        pass
     return result
 
 
-def _down_up(self, version, condition):
-    """Finds first package from down to up that satisfies condition."""
+def _lowerbound_end(versions, version, condition):
+    """Gets all versions from [version, end] that meet condition.
+
+    :param versions: the tree of versions.
+    :param version: the required version
+    :param condition: condition for search
+    :return: the list of found versions
+    """
     result = []
-    items = iter(self.item_slice(version, None))
+    items = iter(versions.item_slice(version, None))
     bound = next(items, None)
     if bound is None:
         return result
     if condition(bound[0], version):
         result.append(bound[1])
-
-    for item in items:
-        if not condition(item[0], version):
-            break
-        result.append(item[1])
-
+    result.extend(x[1] for x in items)
     return result
 
 
@@ -90,10 +90,10 @@ class Index(object):
 
     operators = {
         None: _any,
-        "lt": _make_operator(_top_down, operator.lt),
-        "le": _make_operator(_top_down, operator.le),
-        "gt": _make_operator(_down_up, operator.gt),
-        "ge": _make_operator(_down_up, operator.ge),
+        "lt": _make_operator(_start_upperbound, operator.lt),
+        "le": _make_operator(_start_upperbound, operator.le),
+        "gt": _make_operator(_lowerbound_end, operator.gt),
+        "ge": _make_operator(_lowerbound_end, operator.ge),
         "eq": _equal,
     }
 

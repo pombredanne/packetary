@@ -66,8 +66,8 @@ class ListPackages(BaseProduceOutputCommand):
             help='The path to file with urls for origin repositories.')
         return parser
 
-    def take_repo_action(self, manager, parsed_args):
-        return manager.get_packages(
+    def take_repo_action(self, api, parsed_args):
+        return api.get_packages(
             parsed_args.origins,
             parsed_args.requires,
             parsed_args.bootstrap,

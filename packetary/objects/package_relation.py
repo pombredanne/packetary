@@ -33,19 +33,6 @@ class VersionRange(object):
         self.op = op
         self.edge = edge
 
-    @classmethod
-    def from_args(cls, args):
-        """Construct object from list of args."""
-        if len(args) > 1:
-            edge = args[1]
-        else:
-            edge = None
-        if len(args) > 0:
-            op = args[0]
-        else:
-            op = None
-        return cls(op, edge)
-
     def __hash__(self):
         return hash((self.op, self.edge))
 
@@ -121,22 +108,18 @@ class PackageRelation(object):
         self.alternative = alternative
 
     @classmethod
-    def from_args(cls, args):
-        """Construct relation from list of arguments."""
-        if len(args) > 0:
-            name = args[0]
-        else:
-            raise ValueError("name is mandatory argument.")
+    def from_args(cls, *args):
+        """Construct relation from list of arguments.
 
-        if len(args) > 1:
-            version = VersionRange(*args[1:3])
-        else:
-            version = None
-        if len(args) > 3:
-            alternative = cls.from_args(args[3:])
-        else:
-            alternative = None
+        :param args: the list of tuples(name, [version_op, version_edge])
+        """
+        if len(args) == 0:
+            return None
 
+        head = args[0]
+        name = head[0]
+        version = VersionRange(*head[1:])
+        alternative = cls.from_args(*args[1:])
         return cls(name, version, alternative)
 
     def __iter__(self):

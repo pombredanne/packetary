@@ -25,28 +25,26 @@ def gen_repository(name="test", url="file:///test",
 
 def gen_relation(name="test", version=None, alternative=None):
     """Helper to create PackageRelation object with default attributes."""
-    return [
-        objects.PackageRelation(
-            name=name,
-            version=objects.VersionRange.from_args(version or []),
-            alternative=alternative
-        )
-    ]
+    return objects.PackageRelation(
+        name=name,
+        version=objects.VersionRange(*(version or [])),
+        alternative=alternative
+    )
 
 
 def gen_package(idx=1, **kwargs):
     """Helper to create Package object with default attributes."""
     repository = gen_repository()
-    kwargs.setdefault("name", "package{0}".format(idx))
+    name = kwargs.setdefault("name", "package{0}".format(idx))
     kwargs.setdefault("repository", repository)
     kwargs.setdefault("version", 1)
     kwargs.setdefault("checksum", objects.FileChecksum("1", "2", "3"))
-    kwargs.setdefault("filename", "test.pkg")
+    kwargs.setdefault("filename", "{0}.pkg".format(name))
     kwargs.setdefault("filesize", 1)
     for relation in ("requires", "provides", "obsoletes"):
         if relation not in kwargs:
-            kwargs[relation] = gen_relation(
+            kwargs[relation] = [gen_relation(
                 "{0}{1}".format(relation, idx), ["le", idx + 1]
-            )
+            )]
 
     return objects.Package(**kwargs)

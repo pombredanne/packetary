@@ -27,7 +27,7 @@ from debian import debfile
 from debian.debian_support import Version
 import six
 
-from packetary.drivers.base import RepositoryDriver
+from packetary.drivers.base import RepositoryDriverBase
 from packetary.library.checksum import composite as checksum_composite
 from packetary.library.streams import GzipDecompress
 from packetary.objects import FileChecksum
@@ -78,7 +78,7 @@ _CHECKSUM_METHODS = (
 _checksum_collector = checksum_composite('md5', 'sha1', 'sha256')
 
 
-class DebRepositoryDriver(RepositoryDriver):
+class DebRepositoryDriver(RepositoryDriverBase):
     def parse_urls(self, urls):
         """Parses the repository url.
         :return: the sequence of parsed urls
@@ -94,15 +94,21 @@ class DebRepositoryDriver(RepositoryDriver):
             for component in components.split():
                 yield (base, suite, component)
 
-    def get_repository(self, parsed_url, arch, consumer):
-        """Loads one repository information."""
-        base, suite, component = parsed_url
+    def get_repository(self, connection, url, arch, consumer):
+        """Loads the repository meta information from URL.
+        :param connection: the connection manager instance
+        :param url: the repository`s url
+        :param arch: the repository`s architecture
+        :param consumer: the callback to consume result
+        """
+
+        base, suite, component = url
         release = "/".join((
             base, "dists", suite, component,
             "binary-" + _ARCHITECTURES[arch],
             "Release"
         ))
-        deb_release = deb822.Release(self.connection.open_stream(release))
+        deb_release = deb822.Release(connection.open_stream(release))
         consumer(Repository(
             name=(deb_release["Archive"], deb_release["Component"]),
             architecture=arch,
@@ -110,13 +116,15 @@ class DebRepositoryDriver(RepositoryDriver):
             url=base + "/"
         ))
 
-    def get_packages(self, repository, consumer):
+    def get_packages(self, connection, repository, consumer):
         """Loads packages from repository.
+
+        :param connection: the connection manager instance
         :param repository: the repository object
-        :param consumer: the package consumer
+        :param consumer: the callback to consume result
         """
         index = _get_meta_url(repository, "Packages.gz")
-        stream = GzipDecompress(self.connection.open_stream(index))
+        stream = GzipDecompress(connection.open_stream(index))
         self.logger.info("loading packages from %s ...", repository)
         pkg_iter = deb822.Packages.iter_paragraphs(stream)
         counter = 0
@@ -149,7 +157,8 @@ class DebRepositoryDriver(RepositoryDriver):
         self.logger.info("loaded: %d packages from %s.", counter, repository)
 
     def rebuild_repository(self, repository, packages):
-        """Assigns new packages to repository.
+        """Re-builds the repository.
+
         :param repository: the target repository
         :param packages: the set of packages
         """
@@ -181,12 +190,16 @@ class DebRepositoryDriver(RepositoryDriver):
         self.logger.info("saved %d packages in %s", count, repository)
         self._update_main_index(repository)
 
-    def clone_repository(self, repository, destination,
+    def clone_repository(self, connection, repository, destination,
                          source=False, locale=False):
         """Creates copy of repository.
 
-        :return: The the repositories copy, in same order
-                 as original.
+        :param connection: the connection manager instance
+        :param repository: the source repository
+        :param destination: the destination folder
+        :param source: copy source files
+        :param locale: copy localisation
+        :return: The copy of repository
         """
         # TODO (download gpk)
         # TODO (sources and locales)
