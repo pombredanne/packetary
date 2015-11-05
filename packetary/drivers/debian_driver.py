@@ -142,7 +142,10 @@ class DebRepositoryDriver(RepositoryDriverBase):
                         sha256=dpkg.get("sha256"),
                     ),
                     mandatory=_is_mandatory(dpkg),
-                    requires=_get_relations(dpkg, "depends", "pre-depends"),
+                    # Recommends are installed by default (since Lucid)
+                    requires=_get_relations(
+                        dpkg, "depends", "pre-depends", "recommends"
+                    ),
                     obsoletes=_get_relations(dpkg, "replaces"),
                     provides=_get_relations(dpkg, "provides"),
                 ))
