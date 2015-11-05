@@ -79,6 +79,7 @@ sources:
              - "percona-xtrabackup"
              - "pm-utils"
              - "python-lesscpy"
+             - "python-pip"
              - "puppet"
              - "rsyslog-gnutls"
              - "rsyslog-relp"
