@@ -19,6 +19,7 @@ import six
 
 from packetary.library import streams
 from packetary.tests import base
+from packetary.tests.stubs.helpers import get_compressed
 
 
 class TestBufferedStream(base.TestCase):
@@ -57,16 +58,12 @@ class TestBufferedStream(base.TestCase):
 class TestGzipDecompress(base.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.gzipped = six.BytesIO()
-        gz = gzip.GzipFile(fileobj=cls.gzipped, mode="w")
-        gz.write(b"line1\nline2\nline3\n")
-        gz.flush()
-        gz.close()
+        cls.compressed = get_compressed(six.BytesIO(b"line1\nline2\nline3\n"))
 
     def setUp(self):
         super(TestGzipDecompress, self).setUp()
-        self.gzipped.seek(0)
-        self.stream = streams.GzipDecompress(self.gzipped)
+        self.compressed.reset()
+        self.stream = streams.GzipDecompress(self.compressed)
 
     def test_read(self):
         chunk = self.stream.read(5)
@@ -91,3 +88,11 @@ class TestGzipDecompress(base.TestCase):
         self.assertEqual(
             [b"line1\n", b"line2\n", b"line3\n"],
             lines)
+
+    def test_handle_case_if_not_enough_data_to_decompress(self):
+        self.stream.CHUNK_SIZE = 1
+        chunk = self.stream.read()
+        self.assertEqual(
+            b"line1\nline2\nline3\n",
+            chunk
+        )

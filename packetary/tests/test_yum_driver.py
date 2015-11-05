@@ -14,152 +14,152 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# from __future__ import with_statement
-#
-# import mock
-# import os.path as path
-#
-#
-# REPOMD = path.join(path.dirname(__file__), "data", "repomd.xml")
-# PRIMARY_DB = path.join(path.dirname(__file__), "data", "primary.xml.gz")
+import mock
+import os.path as path
+import six
 
-#
-# class TestYumDriver(base.TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         super(TestYumDriver, cls).setUpClass()
-#         cls.driver = yum_driver.Driver(
-#             Context(),
-#             "x86_64"
-#         )
-#
-#     def test_get_path(self):
-#         package = mock.MagicMock(
-#             baseurl=".", reponame="os", filename="test.rpm"
-#         )
-#         self.assertEqual(
-#             "dir/os/x86_64/test.rpm",
-#             self.driver.get_path("dir", package)
-#         )
-#         self.assertEqual(
-#             "./os/x86_64/test.rpm",
-#             self.driver.get_path(None, package)
-#         )
-#
-#     def test_load(self):
-#         packages = []
-#         connection = self.driver.connections.connection
-#         with open(REPOMD, "rb") as repomd:
-#             with open(PRIMARY_DB, "rb") as primary:
-#                 connection.open_stream.side_effect = [repomd, primary]
-#                 self.driver.load(
-#                     "http://host/centos", "os", packages.append
-#                 )
-#
-#         connection.open_stream.assert_any_call(
-#             "http://host/centos/os/x86_64/repodata/repomd.xml"
-#         )
-#         connection.open_stream.assert_any_call(
-#             "http://host/centos/os/x86_64/repodata/primary.xml.gz"
-#         )
-#         self.assertEqual(1, len(packages))
-#         package = packages[0]
-#         self.assertEqual("test", package.name)
-#         self.assertEqual("0-1.1.1.1-1.el7", str(package.version))
-#         self.assertEqual(100, package.size)
-#         self.assertEqual(
-#             (
-#                 "sha256",
-#                 "e8ed9e0612e813491ed5e7c10502a39e"
-#                 "43ec665afd1321541dea211202707a65"
-#             ),
-#             packages[0].checksum
-#         )
-#         self.assertEqual(
-#             "Packages/test.rpm", package.filename
-#         )
-#         self.assertItemsEqual(
-#             [Relation(
-#                 ['test2', 'eq',
-#                  yum_package.Version({
-#                      "epoch": "0",
-#                      "ver": "1.1.1.1",
-#                      "rel": "1.el7"
-#                  })]
-#             )],
-#             package.requires
-#         )
-#         self.assertItemsEqual(
-#             [Relation("file")], package.provides
-#         )
-#         self.assertItemsEqual(
-#             [Relation("test-old")], package.obsoletes
-#         )
-#
-#     def test_parse_urls(self):
-#         self.assertItemsEqual(
-#             [
-#                 ["http://host/centos", "os"],
-#                 ["http://host/centos", "updates"],
-#             ],
-#             self.driver.parse_urls([
-#                 "http://host/centos/os",
-#                 "http://host/centos/updates/",
-#             ])
-#         )
-#
-#
-# @mock.patch.multiple(
-#     "packetary.library.drivers.yum_driver",
-#     os=mock.DEFAULT,
-#     subprocess=mock.DEFAULT,
-#     createrepo="createrepo"
-# )
-# class TestYumIndexWriter(base.TestCase):
-#     def setUp(self):
-#         super(TestYumIndexWriter, self).setUp()
-#         driver = mock.MagicMock()
-#         driver.arch = "x86_64"
-#         self.writer = yum_driver.YumIndexWriter(
-#             driver,
-#             "/root"
-#         )
-#
-#     def test_add(self, **_):
-#         package = mock.MagicMock(
-#             reponame="os", filename="test.rpm", baseurl="/root"
-#         )
-#         self.writer.add(package)
-#         self.assertItemsEqual(
-#             [package.filename],
-#             self.writer.repos[package.reponame]
-#         )
-#
-#     def test_commit(self, os, subprocess, **_):
-#         package = mock.MagicMock(reponame="os", filename="test.rpm")
-#         self.writer.add(package)
-#         os.path.join = path.join
-#         os.path.exists.return_value = True
-#         self.writer.commit(True)
-#
-#         subprocess.check_call.assert_called_once_with(
-#             ["createrepo", "/root/os/x86_64", "--update"]
-#         )
-#         self.assertEqual(0, os.remove.call_count)
-#
-#     def test_commit_with_cleanup(self, os, subprocess, **_):
-#         package = mock.MagicMock(reponame="os", filename="test.rpm")
-#         self.writer.add(package)
-#         os.path.join = path.join
-#         os.path.exists.return_value = True
-#         self.writer.driver.load = \
-#             lambda *x: x[-1](
-#                 mock.MagicMock(reponame="os", filename="test2.rpm")
-#             )
-#         self.writer.driver.get_path.return_value = "/root/os/x86_64/test2.rpm"
-#         self.writer.commit(False)
-#
-#         subprocess.check_call.assert_called_once_with(
-#             ["createrepo", "/root/os/x86_64", "--update"]
-#         )
-#         os.remove.assert_called_with("/root/os/x86_64/test2.rpm")
+from packetary.drivers import yum_driver
+from packetary.tests import base
+from packetary.tests.stubs.generator import gen_repository
+from packetary.tests.stubs.helpers import get_compressed
+
+
+REPOMD = path.join(path.dirname(__file__), "data", "repomd.xml")
+
+PRIMARY_DB = path.join(path.dirname(__file__), "data", "primary.xml")
+
+GROUPS_DB = path.join(path.dirname(__file__), "data", "groups.xml")
+
+
+class TestYumDriver(base.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(TestYumDriver, cls).setUpClass()
+        cls.driver = yum_driver.YumRepositoryDriver()
+
+    def setUp(self):
+        self.connection = mock.MagicMock()
+
+    def test_parse_urls(self):
+        self.assertItemsEqual(
+            [
+                "http://host/centos/os",
+                "http://host/centos/updates"
+            ],
+            self.driver.parse_urls([
+                "http://host/centos/os",
+                "http://host/centos/updates/",
+            ])
+        )
+
+    def test_get_repository(self):
+        repos = []
+
+        self.driver.get_repository(
+            self.connection, "http://host/centos/os", "x86_64", repos.append
+        )
+
+        self.assertEqual(1, len(repos))
+        repo = repos[0]
+        self.assertEqual("os", repo.name)
+        self.assertEqual("", repo.origin)
+        self.assertEqual("x86_64", repo.architecture)
+        self.assertEqual("http://host/centos/os/x86_64/", repo.url)
+
+    def test_get_packages(self):
+        streams = []
+        for conv, fname in zip(
+                (lambda x: six.BytesIO(x.read()), get_compressed, get_compressed),
+                (REPOMD, GROUPS_DB, PRIMARY_DB)
+        ):
+            with open(fname, "rb") as s:
+                streams.append(conv(s))
+
+        packages = []
+        self.connection.open_stream.side_effect = streams
+        self.driver.get_packages(
+            self.connection,
+            gen_repository("test", url="http://host/centos/os/x86_64/"),
+            packages.append
+        )
+        self.connection.open_stream.assert_any_call(
+            "http://host/centos/os/x86_64/repodata/repomd.xml"
+        )
+        self.connection.open_stream.assert_any_call(
+            "http://host/centos/os/x86_64/repodata/groups.xml.gz"
+        )
+        self.connection.open_stream.assert_any_call(
+            "http://host/centos/os/x86_64/repodata/primary.xml.gz"
+        )
+        self.assertEqual(2, len(packages))
+        package = packages[0]
+        self.assertEqual("test1", package.name)
+        self.assertEqual("1.1.1.1-1.el7", package.version)
+        self.assertEqual(100, package.filesize)
+        self.assertEqual(
+            yum_driver.FileChecksum(
+                None,
+                None,
+                'e8ed9e0612e813491ed5e7c10502a39e'
+                '43ec665afd1321541dea211202707a65'),
+            package.checksum
+        )
+        self.assertEqual(
+            "Packages/test1.rpm", package.filename
+        )
+        self.assertItemsEqual(
+            ['test2 (eq 1.1.1.1-1.el7)'],
+            (str(x) for x in package.requires)
+        )
+        self.assertItemsEqual(
+            ["file (any)"],
+            (str(x) for x in package.provides)
+        )
+        self.assertItemsEqual(
+            ["test-old (any)"],
+            (str(x) for x in package.obsoletes)
+        )
+        self.assertTrue(package.mandatory)
+        self.assertFalse(packages[1].mandatory)
+
+    @mock.patch.multiple(
+        "packetary.drivers.yum_driver",
+        subprocess=mock.DEFAULT,
+        createrepo="createrepo"
+    )
+    def test_rebuild_repository(self, subprocess):
+        self.driver.rebuild_repository(
+            gen_repository("test", url="file:///repo/os/x86_64"),
+            set()
+        )
+        subprocess.check_call.assert_called_once_with(
+            ["createrepo", "/repo/os/x86_64", "--update"]
+        )
+        with self.assertRaises(ValueError):
+            self.driver.rebuild_repository(
+                gen_repository("test", url="http://localhost/os/x86_64"),
+                set()
+            )
+
+    @mock.patch.multiple(
+        "packetary.drivers.yum_driver",
+        subprocess=mock.DEFAULT,
+        os=mock.DEFAULT,
+        createrepo="createrepo",
+    )
+    def test_clone_repository(self, subprocess, os):
+        os.path.join = path.join
+        repo = gen_repository("os", url="http://localhost/os/x86_64")
+        clone = self.driver.clone_repository(
+            self.connection,
+            repo,
+            "/repo"
+        )
+
+        subprocess.check_call.assert_called_once_with(
+            ['createrepo', '/repo/os/x86_64/', '--update']
+        )
+        os.makedirs.assert_called_once_with("/repo/os/x86_64/")
+        self.assertEqual(repo.name, clone.name)
+        self.assertEqual(repo.architecture, clone.architecture)
+        self.assertEqual("/repo/os/x86_64/", clone.url)

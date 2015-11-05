@@ -115,13 +115,18 @@ class GzipDecompress(StreamWrapper):
 
     def read_chunk(self, chunksize):
         if self.decompress.unconsumed_tail:
-            chunk = self.decompress.decompress(
+            uncompressed = self.decompress.decompress(
                 self.decompress.unconsumed_tail, chunksize
             )
-            if chunk:
-                return chunk
+            if uncompressed:
+                return uncompressed
 
-        chunk = self.stream.read(chunksize)
-        if not chunk:
-            return self.decompress.flush()
-        return self.decompress.decompress(chunk, chunksize)
+        while True:
+            chunk = self.stream.read(chunksize)
+            if not chunk:
+                break
+            uncompressed = self.decompress.decompress(chunk, chunksize)
+            if uncompressed:
+                return uncompressed
+        return self.decompress.flush()
+

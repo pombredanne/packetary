@@ -14,9 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import with_statement
-
-import gzip
 import mock
 import os.path as path
 import six
@@ -26,6 +23,7 @@ from packetary.drivers import debian_driver
 from packetary.tests import base
 from packetary.tests.stubs.generator import gen_package
 from packetary.tests.stubs.generator import gen_repository
+from packetary.tests.stubs.helpers import get_compressed
 
 
 PACKAGES = path.join(path.dirname(__file__), "data", "Packages")
@@ -40,13 +38,6 @@ class TestDebDriver(base.TestCase):
 
     def setUp(self):
         self.connection = mock.MagicMock()
-
-    def get_gzipped(self, stream):
-        gzipped = six.BytesIO()
-        with gzip.GzipFile(fileobj=gzipped, mode="wb") as gz:
-            gz.write(stream.read())
-        gzipped.seek(0)
-        return gzipped
 
     def test_parse_urls(self):
         self.assertItemsEqual(
@@ -107,7 +98,7 @@ class TestDebDriver(base.TestCase):
         packages = []
         repo = gen_repository(name=("trusty", "main"), url="http://host/")
         with open(PACKAGES, "rb") as s:
-            self.connection.open_stream.return_value = self.get_gzipped(s)
+            self.connection.open_stream.return_value = get_compressed(s)
             self.driver.get_packages(
                 self.connection,
                 repo,

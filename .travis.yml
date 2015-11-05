@@ -1,0 +1,31 @@
+language: python
+sudo: false
+
+python:
+  - "2.6"
+  - "2.7"
+  - "3.5"
+
+addons:
+  apt:
+    packages:
+    - createrepo
+
+env:
+  - PACKETARY_TYPE="yum" PACKETARY_ORIGIN="http://mirror.yandex.ru/centos/6.7/os" PACKETARY_DEPS="http://mirror.fuel-infra.org/mos-repos/centos/mos8.0-centos6-fuel/os"
+  - PACKETARY_TYPE="deb" PACKETARY_ORIGIN="https://raw.githubusercontent.com/akostrikov/provides/master/dists mos8.0 main" PACKETARY_DEPS="https://raw.githubusercontent.com/akostrikov/needs/master/dists/ mos8.0 main"
+
+before_install:
+  - pip install -r test-requirements.txt
+
+install:
+  - pip install .
+
+script:
+  - py.test -v
+  - packetary list -t $PACKETARY_TYPE -o "$PACKETARY_DEPS" > /dev/null
+  - packetary unresolved -t $PACKETARY_TYPE -o "$PACKETARY_DEPS" > /dev/null
+  - packetary mirror -t $PACKETARY_TYPE -o "$PACKETARY_ORIGIN" -r "$PACKETARY_DEPS" -d $PACKETARY_TYPE
+
+notifications:
+  email: false
