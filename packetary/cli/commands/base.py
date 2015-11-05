@@ -26,6 +26,11 @@ from packetary.cli.commands.utils import read_lines_from_file
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseRepoCommand(command.Command):
+    @property
+    def stdout(self):
+        """Shortcut for self.app.stdout."""
+        return self.app.stdout
+
     def get_parser(self, prog_name):
         parser = super(BaseRepoCommand, self).get_parser(prog_name)
         parser.add_argument(
@@ -147,7 +152,7 @@ class BaseProduceOutputCommand(BaseRepoCommand):
         else:
             columns = self.columns
 
-        stdout = self.app.stdout
+        stdout = self.stdout
         sep = parsed_args.sep
 
         # header

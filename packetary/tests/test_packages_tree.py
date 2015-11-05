@@ -16,8 +16,8 @@
 
 import warnings
 
-from packetary.objects import PackagesTree
 from packetary.objects import Index
+from packetary.objects import PackagesTree
 from packetary.tests import base
 from packetary.tests.stubs import generator
 
@@ -107,4 +107,4 @@ class TestPackagesTree(base.TestCase):
             ptree.get_minimal_subset(
                 None, [generator.gen_relation("package2")]
             )
-        self.assertIn("package2", log[0].message.message)
+        self.assertIn("package2", str(log[0]))

@@ -15,35 +15,42 @@
 #    under the License.
 
 import mock
+import subprocess
 
-from packetary.cli.commands import mirror
+# The cmd2 does not work with python3.5
+# because it tries to get access for property mswindows,
+# that was removed in 3.5
+subprocess.mswindows = False
+
+from packetary.cli.commands import clone
 from packetary.cli.commands import packages
 from packetary.cli.commands import unresolved
 from packetary.tests import base
-
-
-def mock_factory(*args, **kwargs):
-    m = mock.MagicMock()
-    # store the arguments
-    m(*args, **kwargs)
-    return m
+from packetary.tests.stubs.generator import gen_package
+from packetary.tests.stubs.generator import gen_relation
+from packetary.tests.stubs.generator import gen_repository
+from packetary.tests.stubs.helpers import CallbacksAdapter
 
 
 @mock.patch.multiple(
-    "packetary.library.context",
-    ConnectionsPool=mock_factory,
+    "packetary.api",
+    RepositoryController=mock.DEFAULT,
+    ConnectionsManager=mock.DEFAULT,
+    AsynchronousSection=mock.MagicMock()
+)
+@mock.patch(
+    "packetary.cli.commands.base.BaseRepoCommand.stdout"
 )
 class TestCliCommands(base.TestCase):
     common_argv = [
         "--ignore-error-count=3",
         "--thread-count=8",
-        "--connection-count=4",
-        "--retry-count=10",
-        "--connection-proxy=http://proxy",
-        "--connection-secure-proxy=https://proxy"
+        "--retries-count=10",
+        "--http-proxy=http://proxy",
+        "--https-proxy=https://proxy"
     ]
 
-    mirror_argv = [
+    clone_argv = [
         "-o", "http://localhost/origin",
         "-d", ".",
         "-r", "http://localhost/requires",
@@ -68,44 +75,76 @@ class TestCliCommands(base.TestCase):
     def start_cmd(self, cmd, argv):
         cmd.debug(argv + self.common_argv)
 
-    def check_context(self, context):
-        self.assertEqual(3, context.ignore_errors_num)
-        self.assertEqual(8, context.thread_count)
-        context.connections.assert_called_once_with(
-            count=4,
-            retries_num=10,
+    def check_context(self, context, ConnectionsManager):
+        self.assertEqual(3, context._ignore_error_count)
+        self.assertEqual(8, context._thread_count)
+        self.assertIs(context._connection, ConnectionsManager.return_value)
+        ConnectionsManager.assert_called_once_with(
             proxy="http://proxy",
             secure_proxy="https://proxy",
+            retries_num=10
         )
 
-    @mock.patch("packetary.cli.commands.mirror.createmirror")
-    def test_mirror_cmd(self, createmirror):
-        self.start_cmd(mirror, self.mirror_argv)
-        createmirror.assert_called_once_with(
-            mock.ANY, "deb", "x86_64", ".",
-            ["http://localhost/origin"],
-            ["http://localhost/requires"],
-            ["test-package"],
-            False
+    def test_clone_cmd(self, stdout, RepositoryController, **kwargs):
+        ctrl = RepositoryController.load()
+        ctrl.copy_packages = CallbacksAdapter()
+        ctrl.load_repositories = CallbacksAdapter()
+        ctrl.load_packages = CallbacksAdapter()
+        ctrl.copy_packages.return_value = [1, 0]
+        repo = gen_repository()
+        ctrl.load_repositories.side_effect = [repo, gen_repository()]
+        ctrl.load_packages.side_effect = [
+            gen_package(repository=repo),
+            gen_package()
+        ]
+        self.start_cmd(clone, self.clone_argv)
+        RepositoryController.load.assert_called_with(
+            mock.ANY, "deb", "x86_64"
         )
-        self.check_context(createmirror.call_args[0][0])
+        self.check_context(
+            RepositoryController.load.call_args[0][0], **kwargs
+        )
+        stdout.write.assert_called_once_with(
+            "Packages copied: 1/2.\n"
+        )
 
-    @mock.patch("packetary.cli.commands.packages.get_packages")
-    def test_get_packages_cmd(self, get_packages):
+    def test_get_packages_cmd(self, stdout, RepositoryController, **kwargs):
+        ctrl = RepositoryController.load()
+        ctrl.load_packages = CallbacksAdapter()
+        ctrl.load_packages.return_value = gen_package(
+            name="test1",
+            filesize=1,
+            requires=None,
+            obsoletes=None,
+            provides=None
+        )
         self.start_cmd(packages, self.packages_argv)
-        get_packages.assert_called_once_with(
-            mock.ANY, "deb", "x86_64",
-            ["http://localhost/origin"],
-            mock.ANY
+        RepositoryController.load.assert_called_with(
+            mock.ANY, "deb", "x86_64"
         )
-        self.check_context(get_packages.call_args[0][0])
+        self.check_context(
+            RepositoryController.load.call_args[0][0], **kwargs
+        )
+        self.assertIn(
+            "test1; test; 1; test1.pkg; 1;",
+            stdout.write.call_args_list[3][0][0]
+        )
 
-    @mock.patch("packetary.cli.commands.unresolved.get_unresolved_depends")
-    def test_get_unresolved_cmd(self, get_unresolved_depends):
-        self.start_cmd(unresolved, self.unresolved_argv)
-        get_unresolved_depends.assert_called_once_with(
-            mock.ANY, "deb", "x86_64",
-            ["http://localhost/origin"],
-            mock.ANY
+    def test_get_unresolved_cmd(self, stdout, RepositoryController, **kwargs):
+        ctrl = RepositoryController.load()
+        ctrl.load_packages = CallbacksAdapter()
+        ctrl.load_packages.return_value = gen_package(
+            name="test1",
+            requires=[gen_relation("test2")]
         )
-        self.check_context(get_unresolved_depends.call_args[0][0])
+        self.start_cmd(unresolved, self.unresolved_argv)
+        RepositoryController.load.assert_called_with(
+            mock.ANY, "deb", "x86_64"
+        )
+        self.check_context(
+            RepositoryController.load.call_args[0][0], **kwargs
+        )
+        self.assertIn(
+            "test2; any; -",
+            stdout.write.call_args_list[3][0][0]
+        )

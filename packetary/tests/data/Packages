@@ -5,7 +5,7 @@ Architecture: all
 Maintainer: Test
 Installed-Size: 3509
 Homepage: http://localhost/
-Priority: optional
+Priority: required
 Section: web
 Filename: pool/main/t/test.deb
 Size: 100

@@ -53,8 +53,11 @@ class TestRepositoryApi(base.TestCase):
         ]
 
         api = RepositoryApi(controller)
-        packages = api.get_packages(["file:///repo1", "file:///repo2"],
-                                     "file:///repo3", ["package4"])
+        packages = api.get_packages([
+            "file:///repo1", "file:///repo2"
+        ],
+            "file:///repo3", ["package4"]
+        )
 
         self.assertEqual(3, len(packages))
         self.assertItemsEqual(
@@ -86,7 +89,9 @@ class TestRepositoryApi(base.TestCase):
         )
         self.assertEqual(2, stats.total)
         self.assertEqual(1, stats.copied)
-        controller.copy_packages.assert_called_once_with(mirror, set(packages), True)
+        controller.copy_packages.assert_called_once_with(
+            mirror, set(packages), True
+        )
 
     def test_copy_minimal_subset_of_repository(self):
         controller = CallbacksAdapter()
@@ -128,15 +133,22 @@ class TestRepositoryApi(base.TestCase):
                 requires=[generator.gen_relation("package2")]
             )
         ]
-        controller.clone_repositories.return_value = {repo1: mirror1, repo2: mirror2}
+        controller.clone_repositories.return_value = {
+            repo1: mirror1, repo2: mirror2
+        }
+        controller.copy_packages.return_value = 1
         api = RepositoryApi(controller)
         api.clone_repositories(
             ["file:///repo1", "file:///repo2"], "/mirror",
             ["file:///repo3"],
             keep_existing=True
         )
-        controller.copy_packages.assert_any_call(mirror1, set(pkg_group1), True)
-        controller.copy_packages.assert_any_call(mirror2, set(pkg_group2), True)
+        controller.copy_packages.assert_any_call(
+            mirror1, set(pkg_group1), True
+        )
+        controller.copy_packages.assert_any_call(
+            mirror2, set(pkg_group2), True
+        )
         self.assertEqual(2, controller.copy_packages.call_count)
 
     def test_get_unresolved(self):
@@ -156,11 +168,11 @@ class TestRepositoryApi(base.TestCase):
         )
 
     def test_parse_requirements(self):
-        requirements = sorted(RepositoryApi._parse_requirements(
-            ["p1 le 2 | p2 | p3 ge 2", "p4"]
-        ))
+        requirements = RepositoryApi._parse_requirements(
+            ["p1 le 2 | p2 | p3 ge 2"]
+        )
 
-        rel1 = generator.gen_relation(
+        expected = generator.gen_relation(
             "p1",
             ["le", '2'],
             generator.gen_relation(
@@ -172,13 +184,8 @@ class TestRepositoryApi(base.TestCase):
                 )
             )
         )
-        rel2 = generator.gen_relation("p4")
-        self.assertEqual(2, len(requirements))
-        self.assertItemsEqual(
-            rel1,
-            requirements[0]
-        )
-        self.assertItemsEqual(
-            rel2,
-            requirements[1]
+        self.assertEqual(1, len(requirements))
+        self.assertEqual(
+            list(expected),
+            list(requirements.pop())
         )

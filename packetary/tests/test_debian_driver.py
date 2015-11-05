@@ -16,103 +16,64 @@
 
 from __future__ import with_statement
 
+import gzip
 import mock
 import os.path as path
 import six
 
 
-from packetary.library.drivers import deb_driver
-from packetary.library.package import Relation
+from packetary.drivers import debian_driver
 from packetary.tests import base
-from packetary.tests.stubs.context import Context
+from packetary.tests.stubs.generator import gen_package
+from packetary.tests.stubs.generator import gen_repository
 
 
-PACKAGES_GZ = path.join(path.dirname(__file__), "data", "packages.gz")
+PACKAGES = path.join(path.dirname(__file__), "data", "Packages")
+RELEASE = path.join(path.dirname(__file__), "data", "Release")
 
 
 class TestDebDriver(base.TestCase):
     @classmethod
     def setUpClass(cls):
         super(TestDebDriver, cls).setUpClass()
-        cls.driver = deb_driver.Driver(
-            Context(),
-            "x86_64"
-        )
+        cls.driver = debian_driver.DebRepositoryDriver()
 
-    def test_get_path(self):
-        package = mock.MagicMock(baseurl=".", filename="test.deb")
-        self.assertEqual(
-            "dir/test.deb",
-            self.driver.get_path("dir", package)
-        )
-        self.assertEqual(
-            "./test.deb",
-            self.driver.get_path(None, package)
-        )
+    def setUp(self):
+        self.connection = mock.MagicMock()
 
-    def test_load(self):
-        packages = []
-        connection = self.driver.connections.connection
-        with open(PACKAGES_GZ, "rb") as stream:
-            connection.open_stream.return_value = stream
-            self.driver.load(
-                "http://host", ("trusty", "main"), packages.append
-            )
-
-        connection.open_stream.assert_called_once_with(
-            "http://host/dists/trusty/main/binary-amd64/Packages.gz",
-        )
-        self.assertEqual(1, len(packages))
-        package = packages[0]
-        self.assertEqual("test", package.name)
-        self.assertEqual("1.1.1-1~u14.04+test", package.version)
-        self.assertEqual(100, package.size)
-        self.assertEqual(
-            ("sha1", "402bd18c145ae3b5344edf07f246be159397fd40"),
-            packages[0].checksum
-        )
-        self.assertEqual(
-            "pool/main/t/test.deb", package.filename
-        )
-        self.assertItemsEqual(
-            [Relation(['test2', 'ge', '0.8.16~exp9', 'tes2-old']),
-             Relation('test3'),
-             Relation('test-main')],
-            package.requires
-        )
-        self.assertItemsEqual(
-            [Relation("file")], package.provides
-        )
-        self.assertItemsEqual(
-            [Relation("test-old")], package.obsoletes
-        )
+    def get_gzipped(self, stream):
+        gzipped = six.BytesIO()
+        with gzip.GzipFile(fileobj=gzipped, mode="wb") as gz:
+            gz.write(stream.read())
+        gzipped.seek(0)
+        return gzipped
 
     def test_parse_urls(self):
         self.assertItemsEqual(
             [
-                ("http://host", ("trusty", "main")),
-                ("http://host", ("trusty", "restricted")),
+                ("http://host", "trusty", "main"),
+                ("http://host", "trusty", "restricted"),
             ],
             self.driver.parse_urls(
                 ["http://host/dists/ trusty main restricted"]
             )
         )
         self.assertItemsEqual(
-            [("http://host", ("trusty", "main"))],
+            [("http://host", "trusty", "main")],
             self.driver.parse_urls(
                 ["http://host/dists trusty main"]
             )
         )
         self.assertItemsEqual(
-            [("http://host", ("trusty", "main"))],
+            [("http://host", "trusty", "main")],
             self.driver.parse_urls(
                 ["http://host/ trusty main"]
             )
         )
         self.assertItemsEqual(
             [
-                ("http://host", ("trusty", "main")),
-                ("http://host2", ("trusty", "main")),
+                ("http://host", "trusty", "main"),
+                ("http://host2", "trusty", "main"),
             ],
             self.driver.parse_urls(
                 [
@@ -122,137 +83,191 @@ class TestDebDriver(base.TestCase):
             )
         )
 
-    def test_parse_urls_fail_if_invalid(self):
-        with self.assertRaisesRegexp(ValueError, "Invalid url:"):
-            next(self.driver.parse_urls(["http://host/dists/trusty main"]))
-        with self.assertRaisesRegexp(ValueError, "Invalid url:"):
-            next(self.driver.parse_urls(["http://host/dists trusty,main"]))
-
-
-@mock.patch.multiple(
-    "packetary.library.drivers.deb_driver",
-    os=mock.DEFAULT,
-    gzip=mock.DEFAULT,
-    open=mock.DEFAULT,
-    fcntl=mock.DEFAULT,
-)
-class TestDebIndexWriter(base.TestCase):
-    def setUp(self):
-        super(TestDebIndexWriter, self).setUp()
-        driver = mock.MagicMock()
-        driver.arch = "x86_64"
-        self.writer = deb_driver.DebIndexWriter(
-            driver,
-            "/root"
+    def test_get_repository(self):
+        repos = []
+        with open(RELEASE, "rb") as stream:
+            self.connection.open_stream.return_value = stream
+            self.driver.get_repository(
+                self.connection,
+                ("http://host", "trusty", "main"),
+                "x86_64",
+                repos.append
+            )
+        self.connection.open_stream.assert_called_once_with(
+            "http://host/dists/trusty/main/binary-amd64/Release"
         )
+        self.assertEqual(1, len(repos))
+        repo = repos[0]
+        self.assertEqual(("trusty", "main"), repo.name)
+        self.assertEqual("Ubuntu", repo.origin)
+        self.assertEqual("x86_64", repo.architecture)
+        self.assertEqual("http://host/", repo.url)
 
-    def test_add(self, **_):
-        package = mock.MagicMock(suite="trusty", comp="main")
-        package.dpkg.get.return_value = None
-        self.writer.add(package)
-        package.dpkg.get.return_value = 'test'
-        self.writer.add(package)
-        package.dpkg.get.return_value = 'unknown'
-        self.writer.add(package)
-        self.assertEqual("test", self.writer.origin)
-        self.assertIsNone(
-            self.writer.index[(package.suite, package.comp)][package]
+    def test_get_packages(self):
+        packages = []
+        repo = gen_repository(name=("trusty", "main"), url="http://host/")
+        with open(PACKAGES, "rb") as s:
+            self.connection.open_stream.return_value = self.get_gzipped(s)
+            self.driver.get_packages(
+                self.connection,
+                repo,
+                packages.append
+            )
+
+        self.connection.open_stream.assert_called_once_with(
+            "http://host/dists/trusty/main/binary-amd64/Packages.gz",
         )
-
-    def test_commit(self, gzip, open, os, fcntl):
-        package = mock.MagicMock(suite="trusty", comp="main")
-        package.dpkg.get.return_value = "Test"
-        self.writer.add(package)
-        os.path.join = path.join
-        os.path.exists.return_value = True
-        self.writer.driver.load = \
-            lambda *x: x[-1](package)
-        self.writer.commit(True)
-        open.assert_any_call(
-            "/root/dists/trusty/main/binary-x86_64/Packages", "wb"
-        )
-        open.assert_any_call(
-            "/root/dists/trusty/main/binary-x86_64/Release", "w"
-        )
-        open.assert_any_call(
-            "/root/dists/trusty/Release", "w"
-        )
-        gzip.open.assert_any_call(
-            "/root/dists/trusty/main/binary-x86_64/Packages.gz", "wb"
-        )
-        fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_EX)
-        fcntl.flock.assert_any_call(mock.ANY, fcntl.LOCK_UN)
-
-    def test_commit_with_cleanup(self, os, **_):
-        self.writer.driver.load = \
-            lambda *x: x[-1](mock.MagicMock(filename="test.pkg"))
-        self.writer.driver.get_path.return_value = "/root/test.pkg"
-        os.path.join = path.join
-        os.path.exists.return_value = True
-
-        package = mock.MagicMock(suite="trusty", comp="main")
-        package.dpkg.get.return_value = "Test"
-        self.writer.add(package)
-        self.writer.commit(False)
-
-        os.remove.assert_called_once_with("/root/test.pkg")
-
-    def test_updates_global_releases(self, os, open, **_):
-        os.path.join = path.join
-        os.listdir.return_value = ["main"]
-        os.walk.return_value = [
-            (
-                "/root/dists/trusty/main",
-                [],
-                ["Release", "Packages", "Packages.gz", "test.pkg"]
-            ),
-            (
-                "/root/dists/trusty/restricted",
-                [],
-                ["Release", "Packages", "Packages.gz", "test.pkg"]
-            ),
-        ]
-        os.path.isdir.return_value = True
-        os.fstat.side_effect = [
-            mock.MagicMock(st_size=1),
-            mock.MagicMock(st_size=10),
-            mock.MagicMock(st_size=10000000000000000),
-        ] * 2
-
-        meta_stream = six.StringIO()
-        open.return_value = mock.MagicMock(write=meta_stream.write)
-        open.return_value.read.side_effect = [b"data", ""] * 6
-        self.writer.origin = "test"
-        self.writer._updates_global_releases(["trusty"])
-
-        content = meta_stream.getvalue()
-        start = content.find("Components:")
-        self.assertNotEqual(-1, start)
-        end = content.find("\n", start)
+        self.assertEqual(1, len(packages))
+        package = packages[0]
+        self.assertEqual("test", package.name)
+        self.assertEqual("1.1.1-1~u14.04+test", package.version)
+        self.assertEqual(100, package.filesize)
         self.assertEqual(
-            "Components: main", content[start:end]
+            debian_driver.FileChecksum(
+                '1ae09f80109f40dfbfaf3ba423c8625a',
+                '402bd18c145ae3b5344edf07f246be159397fd40',
+                '14d6e308d8699b7f9ba2fe1ef778c0e3'
+                '8cf295614d308039d687b6b097d50859'),
+            package.checksum
+        )
+        self.assertEqual(
+            "pool/main/t/test.deb", package.filename
+        )
+        self.assertTrue(package.mandatory)
+        self.assertItemsEqual(
+            ['test-main (any)', 'test2 (ge 0.8.16~exp9) | tes2-old (any)', 'test3 (any)'],
+            (str(x) for x in package.requires)
+        )
+        self.assertItemsEqual(
+            ["file (any)"],
+            (str(x) for x in package.provides)
+        )
+        self.assertItemsEqual(
+            ["test-old (any)"],
+            (str(x) for x in package.obsoletes)
         )
 
+    @mock.patch.multiple(
+        "packetary.drivers.debian_driver",
+        deb822=mock.DEFAULT,
+        debfile=mock.DEFAULT,
+        fcntl=mock.DEFAULT,
+        gzip=mock.DEFAULT,
+        open=mock.DEFAULT,
+        os=mock.DEFAULT,
+        _checksum_collector=mock.DEFAULT
+    )
+    def test_rebuild_repository(self, os, debfile, deb822, fcntl, gzip, open, _checksum_collector):
+        repo = gen_repository(name=("trusty", "main"), url="file:///repo")
+        package = gen_package(name="test", repository=repo)
+        os.makedirs.side_effect = OSError(debian_driver.errno.EEXIST, "")
+        os.path.join = lambda *x: "/".join(x)
+        _checksum_collector.return_value = ["md5", "sha1", "sha256"]
+        os.fstat.return_value = mock.MagicMock(st_size=10)
         files = [
-            ("10", "Packages"),
-            ("1", "Release"),
-            ("10000000000000000", "Packages.gz"),
+            mock.MagicMock(),  # Packages, w
+            mock.MagicMock(),  # Release, a+b
+            mock.MagicMock(),  # Packages, rb
+            mock.MagicMock(),  # Release, rb
+            mock.MagicMock()   # Packages.gz, rb
         ]
+        open.side_effect = files
+        self.driver.rebuild_repository(repo, [package])
+        open.assert_any_call(
+            "/repo/dists/trusty/main/binary-amd64//Packages", "wb"
+        )
+        gzip.open.assert_called_once_with(
+            "/repo/dists/trusty/main/binary-amd64//Packages.gz", "wb"
+        )
+        debfile.DebFile.assert_called_once_with(
+            "/repo/test.pkg"
+        )
+        self.assertGreater(files[0].write.call_count, 0)
+        self.assertEqual(files[0].write.call_count, gzip.open.return_value.write.call_count)
+        open.assert_any_call("/repo/dists/trusty/Release", "a+b")
+        fcntl.flock.assert_any_call(files[1].fileno(), fcntl.LOCK_EX)
+        fcntl.flock.assert_any_call(files[1].fileno(), fcntl.LOCK_UN)
+        deb822.Release.return_value.dump.assert_called_once_with(files[1])
+        for k, v in zip(debian_driver._CHECKSUM_METHODS, _checksum_collector.return_value):
+            deb822.Deb822Dict.assert_any_call({
+                k: v,
+                "size": '10',
+                "name": "main/binary-amd64/Packages"
+            })
 
-        for h in ("MD5Sum:", "SHA1", "SHA256"):
-            start = content.find(h, end + 1)
-            self.assertNotEqual(-1, start)
-            start += len(h) + 1
-            for comp in ("main", "restricted"):
-                for size, name in files:
-                    end = content.find("\n", start + 1)
-                    expected = "{0}{1} {2}/{3}".format(
-                        " " * (deb_driver._SIZE_ALIGNMENT - len(size)),
-                        size,
-                        comp,
-                        name
-                    )
-                    self.assertTrue(
-                        content[start:end].endswith(expected)
-                    )
-                    start = end + 1
+    @mock.patch.multiple(
+        "packetary.drivers.debian_driver",
+        deb822=mock.DEFAULT,
+        gzip=mock.DEFAULT,
+        open=mock.DEFAULT,
+        os=mock.DEFAULT
+    )
+    def test_clone_repository(self, deb822, gzip, open, os):
+        os.makedirs.side_effect = OSError(debian_driver.errno.EEXIST, "")
+        os.path.sep = "/"
+        os.path.join = lambda *x: "/".join(x)
+        repo = gen_repository(name=("trusty", "main"), url="http://localhost")
+        files = [
+            mock.MagicMock(),
+            mock.MagicMock()
+        ]
+        open.side_effect = files
+        clone = self.driver.clone_repository(self.connection, repo, "/root")
+        self.assertEqual(repo.name, clone.name)
+        self.assertEqual(repo.architecture, clone.architecture)
+        self.assertEqual(repo.origin, clone.origin)
+        self.assertEqual("/root/", clone.url)
+        os.makedirs.assert_called_once_with("/root//dists/trusty/main/binary-amd64/")
+        open.assert_any_call(
+            "/root//dists/trusty/main/binary-amd64//Release", "wb"
+        )
+        open.assert_any_call(
+            "/root//dists/trusty/main/binary-amd64//Packages", "ab"
+        )
+        gzip.open.assert_called_once_with(
+            "/root//dists/trusty/main/binary-amd64//Packages.gz", "ab"
+        )
+        deb822.Release.return_value.dump.assert_called_once_with(
+            files[0]
+        )
+
+    @mock.patch.multiple(
+        "packetary.drivers.debian_driver",
+        fcntl=mock.DEFAULT,
+        gzip=mock.DEFAULT,
+        open=mock.DEFAULT,
+        os=mock.DEFAULT,
+        _checksum_collector=mock.DEFAULT
+    )
+    def test_update_suite_index(self, os, fcntl, gzip, open, _checksum_collector):
+        repo = gen_repository(name=("trusty", "main"), url="/repo")
+        files = [
+            mock.MagicMock(),  # Release, a+b
+            mock.MagicMock(),  # Packages, rb
+            mock.MagicMock(),  # Release, rb
+            mock.MagicMock()   # Packages.gz, rb
+        ]
+        files[0].items.return_value = [
+            ("SHA1", "invalid  1  main/binary-amd64/Packages\n"),
+            ("Architectures", "i386"),
+            ("Components", "restricted"),
+        ]
+        os.path.join = lambda *x: "/".join(x)
+        open.side_effect = files
+        checksums = ["md5", "sha1", "sha256"]
+        _checksum_collector.return_value = checksums
+        os.fstat.return_value = mock.MagicMock(st_size=10)
+        self.driver._update_suite_index(repo)
+        open.assert_any_call("/repo/dists/trusty/Release", "a+b")
+        files[0].seek.assert_called_once_with(0)
+        files[0].truncate.assert_called_once_with(0)
+        files[0].write.assert_any_call(six.b("Architectures: amd64 i386\n"))
+        files[0].write.assert_any_call(six.b("Components: main restricted\n"))
+        for m, v in zip(debian_driver._CHECKSUM_METHODS, checksums):
+            files[0].write.assert_any_call(six.b(
+                '{0}:\n'
+                ' {1}               10 main/binary-amd64/Packages\n'
+                ' {1}               10 main/binary-amd64/Release\n'
+                ' {1}               10 main/binary-amd64/Packages.gz\n'
+                .format(m, v)
+            ))

@@ -162,6 +162,7 @@ class DebRepositoryDriver(RepositoryDriverBase):
         :param repository: the target repository
         :param packages: the set of packages
         """
+        basedir = _get_filepath(repository.url)
         path = _get_meta_path(repository, "")
         try:
             os.makedirs(path)
@@ -176,7 +177,7 @@ class DebRepositoryDriver(RepositoryDriverBase):
             with closing(gzip.open(index_gz, "wb")) as fd2:
                 writer = _composite_writer(fd1, fd2)
                 for pkg in packages:
-                    filename = os.path.join(repository.url, pkg.filename)
+                    filename = os.path.join(basedir, pkg.filename)
                     with closing(debfile.DebFile(filename)) as deb:
                         debcontrol = deb.debcontrol()
                     debcontrol.setdefault("Origin", repository.origin)
@@ -188,7 +189,7 @@ class DebRepositoryDriver(RepositoryDriverBase):
                     writer("\n")
                     count += 1
         self.logger.info("saved %d packages in %s", count, repository)
-        self._update_main_index(repository)
+        self._update_suite_index(repository)
 
     def clone_repository(self, connection, repository, destination,
                          source=False, locale=False):
@@ -203,6 +204,8 @@ class DebRepositoryDriver(RepositoryDriverBase):
         """
         # TODO (download gpk)
         # TODO (sources and locales)
+        if not destination.endswith(os.path.sep):
+            destination += os.path.sep
 
         clone = copy.copy(repository)
         clone.url = destination
@@ -228,8 +231,10 @@ class DebRepositoryDriver(RepositoryDriverBase):
         gzip.open(os.path.join(path, "Packages.gz"), "ab").close()
         return clone
 
-    def _update_main_index(self, repository):
-        path = os.path.join(repository.url, "dists", repository.name[0])
+    def _update_suite_index(self, repository):
+        path = os.path.join(
+            _get_filepath(repository.url), "dists", repository.name[0]
+        )
         release_path = os.path.join(path, "Release")
         self.logger.info("updated suite release file: %s", release_path)
         with closing(open(release_path, "a+b")) as fd:
@@ -295,16 +300,27 @@ class DebRepositoryDriver(RepositoryDriverBase):
 def _get_meta_url(repository, filename):
     """Get the meta file url."""
     return "/".join((
-        repository.url, "dists", repository.name[0], repository.name[1],
+        repository.url[:-1], "dists", repository.name[0], repository.name[1],
         "binary-" + _ARCHITECTURES[repository.architecture],
         filename
     ))
 
 
+def _get_filepath(url):
+    """Get the filepath from url."""
+    if url.startswith("file://"):
+        url = url[7:]
+    if not url.startswith("/"):
+        raise ValueError("The absolute path is expected: {0}."
+                         .format(url))
+    return url
+
+
 def _get_meta_path(repository, filename):
     """Get the meta file url."""
+    basepath = _get_filepath(repository.url)
     return os.path.join(
-        repository.url, "dists", repository.name[0], repository.name[1],
+        basepath, "dists", repository.name[0], repository.name[1],
         "binary-" + _ARCHITECTURES[repository.architecture],
         filename
     )

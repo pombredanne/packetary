@@ -40,7 +40,7 @@ class Application(app.App):
             help="The number of errors that can be ignored."
         )
         parser.add_argument(
-            "--retries_count",
+            "--retries-count",
             type=int,
             default=5,
             metavar="NUMBER",

@@ -22,7 +22,7 @@ from packetary.api import Context
 
 
 __all__ = [
-    "Configuration"
+    "Configuration",
     "Context",
     "RepositoryApi",
 ]
