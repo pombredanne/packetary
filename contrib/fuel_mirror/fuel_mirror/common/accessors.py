@@ -22,7 +22,7 @@ def get_packetary_accessor(**kwargs):
     import packetary
 
     return functools.partial(
-        packetary.RepositoryManager.create,
+        packetary.RepositoryApi.create,
         packetary.Context(packetary.Configuration(**kwargs))
     )
 
