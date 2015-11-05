@@ -93,6 +93,8 @@ sources:
              - "vim"
              - "virt-what"
              - "xinetd"
+             - "zip"
+             - "unzip"
  
     -   name: "centos"
         osname: "centos"
