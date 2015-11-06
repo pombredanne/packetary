@@ -192,7 +192,7 @@ class YumRepositoryDriver(RepositoryDriverBase):
             except (ValueError, KeyError) as e:
                 self.logger.error(
                     "Malformed tag %s - %s: %s",
-                    repository, six.text_type(tag), six.text_type(e)
+                    repository, etree.tostring(tag), six.text_type(e)
                 )
                 raise
             counter += 1
