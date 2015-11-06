@@ -168,9 +168,12 @@ class YumRepositoryDriver(RepositoryDriverBase):
         mandatory = self._get_mandatory_packages(
             self._load_db(connection, baseurl, repomd_tree, "group_gz")
         )
-        packages = self._load_db(connection, baseurl, repomd_tree, "primary")
+        primary_db = self._load_db(connection, baseurl, repomd_tree, "primary")
+        if primary_db is None:
+            raise ValueError("Malformed repository: {0}".format(repository))
+
         counter = 0
-        for tag in packages.iterfind("./main:package", _NAMESPACES):
+        for tag in primary_db.iterfind("./main:package", _NAMESPACES):
             try:
                 name = _find(tag, "./main:name").text
                 consumer(Package(
@@ -268,7 +271,8 @@ class YumRepositoryDriver(RepositoryDriverBase):
             "./md:data[@type='{0}']".format(kind), _NAMESPACES
         )
         if node is None:
-            raise ValueError("malformed meta: %s" % repomd)
+            return
+
         url = urljoin(
             baseurl,
             node.find("./md:location", _NAMESPACES).attrib["href"]
@@ -281,6 +285,8 @@ class YumRepositoryDriver(RepositoryDriverBase):
     def _get_mandatory_packages(self, comps_db):
         """Get the set of mandatory package names."""
         package_names = set()
+        if comps_db is None:
+            return package_names
         count = 0
         for name in _CORE_GROUPS:
             result = comps_db.xpath("./group/id[text()='{0}']".format(name))
