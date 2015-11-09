@@ -31,31 +31,36 @@ logger = logging.getLogger(__package__)
 
 
 class Configuration(object):
-    """The configuration object."""
+    """The configuration holder."""
 
     def __init__(self, http_proxy=None, https_proxy=None,
-                 retries_count=0, thread_count=0,
-                 ignore_error_count=0):
+                 retries_num=0, threads_num=0,
+                 ignore_errors_num=0):
         """Initialises.
 
-        :param http_proxy: the proxy address for http-connections
-        :param https_proxy: the proxy address for https-connections
-        :param retries_count: the number of retries on errors
-        :param thread_count: the max number of active threads
-        :param ignore_error_count: the number of errors that may occurs
+        :param http_proxy: the url of proxy for connections over http,
+                           no-proxy will be used if it is not specified
+        :param https_proxy: the url of proxy for connections over https,
+                            no-proxy will be used if it is not specified
+        :param retries_num: the number of retries on errors
+        :param threads_num: the max number of active threads
+        :param ignore_errors_num: the number of errors that may occurs
                 before stop processing
         """
 
         self.http_proxy = http_proxy
         self.https_proxy = https_proxy
-        self.ignore_error_count = ignore_error_count
-        self.retries_count = retries_count
-        self.thread_count = thread_count
+        self.ignore_error_count = ignore_errors_num
+        self.retries_num = retries_num
+        self.thread_count = threads_num
 
 
 class Context(object):
+    """The infra-objects holder."""
+
     def __init__(self, config):
         """Initialises.
+
         :param config: the configuration
         """
         self._connection = ConnectionsManager(

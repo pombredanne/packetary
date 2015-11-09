@@ -37,13 +37,13 @@ class PackagesTree(Index):
         if package.mandatory:
             self.mandatory_packages.append(package)
 
-    def get_unresolved_depends(self, unresolved=None):
-        """Gets the set of unresolved depends.
+    def get_unresolved_dependencies(self, unresolved=None):
+        """Gets the set of unresolved dependencies.
 
         :param unresolved: the known list of unresolved packages.
         :return: the set of unresolved depends.
         """
-        return PackagesTree.__find_unresolved(self)
+        return self.__get_unresolved_dependencies(self)
 
     def get_minimal_subset(self, main, requirements):
         """Gets the minimal work subset.
@@ -60,7 +60,7 @@ class PackagesTree(Index):
                 pass
         else:
             pkg_filter = main.find
-            PackagesTree.__find_unresolved(main, requirements)
+            self.__get_unresolved_dependencies(main, requirements)
 
         stack = list()
         stack.append((None, requirements))
@@ -98,9 +98,10 @@ class PackagesTree(Index):
         return resolved
 
     @staticmethod
-    def __find_unresolved(index, unresolved=None):
-        """Gets the set of unresolved depends.
+    def __get_unresolved_dependencies(index, unresolved=None):
+        """Gets the set of unresolved dependencies.
 
+        :param index: the search index.
         :param unresolved: the known list of unresolved packages.
         :return: the set of unresolved depends.
         """

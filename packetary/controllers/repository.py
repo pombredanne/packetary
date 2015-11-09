@@ -14,10 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import functools
+import logging
 import os
-
 
 import six
 import stevedore
@@ -39,12 +38,12 @@ class RepositoryController(object):
         self.arch = arch
 
     @classmethod
-    def load(cls, context, driver_name, arch):
+    def load(cls, context, driver_name, repoarch):
         """Creates the repository manager.
 
         :param context: the context
         :param driver_name: the name of required driver
-        :param arch: the architecture of repository (x86_64 or i386)
+        :param repoarch: the architecture of repository (x86_64 or i386)
         """
         if cls._drivers is None:
             cls._drivers = stevedore.ExtensionManager(
@@ -56,7 +55,7 @@ class RepositoryController(object):
             raise NotImplementedError(
                 "The driver {0} is not supported yet.".format(driver_name)
             )
-        return cls(context, driver, arch)
+        return cls(context, driver, repoarch)
 
     def load_repositories(self, urls, consumer):
         """Loads the repository objects from url.
@@ -84,11 +83,16 @@ class RepositoryController(object):
             self.driver.get_packages(connection, r, consumer)
 
     def assign_packages(self, repository, packages, keep_existing=True):
-        """Assigns set of packages to the repository.
+        """Assigns new packages to the repository.
+
+         It replaces the current repository`s packages.
 
         :param repository: the target repository
-        :param packages: the set of packages
+        :param packages: the set of new packages
         :param keep_existing:
+            if True, all existing packages will be kept as is.
+            if False, all existing packages, that are not included
+            to new packages will be removed.
         """
 
         if not isinstance(packages, set):
@@ -100,7 +104,7 @@ class RepositoryController(object):
             consume_exist = packages.add
         else:
             consume_exist = functools.partial(
-                remove_if_not, packages.__contains__
+                remove_package_if, lambda x: x not in packages
             )
 
         self.driver.get_packages(
@@ -162,13 +166,13 @@ class RepositoryController(object):
         observer(bytes_copied)
 
 
-def remove_if_not(condition, package):
-    """Removes package file if not condition.
+def remove_package_if(condition, package):
+    """Removes package file if condition.
 
     :param condition: function, that returns True of False.
     :param package: the package object
     """
-    if not condition(package):
+    if condition(package):
         filepath = os.path.join(package.repository.url, package.filename)
         logger.info("remove package - %s.", filepath)
         os.remove(filepath)
