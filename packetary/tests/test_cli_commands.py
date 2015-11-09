@@ -18,7 +18,7 @@ import mock
 import subprocess
 
 # The cmd2 does not work with python3.5
-# because it tries to get access for property mswindows,
+# because it tries to get access to the property mswindows,
 # that was removed in 3.5
 subprocess.mswindows = False
 

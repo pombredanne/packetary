@@ -27,34 +27,60 @@ def get_url_parser(kind):
 @six.add_metaclass(abc.ABCMeta)
 class RepoUrlParser(object):
     @abc.abstractmethod
-    def join(self, baseurl, repo_uri):
-        """Gets the url for repo."""
+    def join(self, baseurl, uri):
+        """Joins the base URL and repository`s URI.
 
-    @abc.abstractmethod
-    def get_name(self, first_name, repo_uri):
-        """Gets the name for repo."""
+        :param baseurl: the base repository`s URL
+        :param uri: the repository`s URI
+        :return: the full repository`s URL
+        """
 
     @abc.abstractmethod
     def get_repo_config(self, name, url):
-        """Gets the config for repo in fuel compatible format."""
+        """Gets the config for repo in FUEL compatible format.
+
+        :param name: the main repository`s name
+        :param url: the repository`s full-URL
+        :return: the config for repository in FUEL format.
+        """
 
     def format_url(self, baseurl, uri, **kwargs):
-        """Get the url with replaced variable holders."""
+        """Get the url with replaced variable holders.
+
+        :param baseurl: the repositories`s base url
+        :param uri: the repository`s uri
+        :param kwargs: the keyword arguments to string format.
+        :return: the full repository`s url
+        """
         return self.join(baseurl, uri).format(**kwargs)
 
     def get_urls(self, baseurl, uris, **kwargs):
-        """Get the urls from uris."""
+        """Same as format_url, but for sequence.
+
+        :param baseurl: the repositories`s base url
+        :param uris: the sequence of repository`s uri
+        :param kwargs: the keyword arguments to string format.
+        :return: the list of full repository`s url
+        """
+
         return [
             self.format_url(baseurl, x, **kwargs) for x in uris
         ]
 
 
 class DebUrlParser(RepoUrlParser):
-    def get_name(self, first_name, uri):
-        suite = uri.split(" ", 1)[0].rsplit("-", 1)
+    @staticmethod
+    def get_name(name, suite):
+        """Gets the full repository`s name.
+
+        :param name: the main repository`s name
+        :param suite: the suite name
+        :return: the repository`s full-name
+        """
+        suite = suite.rsplit("-", 1)
         if len(suite) > 1:
-            return "-".join((first_name, suite[-1]))
-        return first_name
+            return "-".join((name, suite[-1]))
+        return name
 
     def join(self, baseurl, uri):
         baseurl = baseurl.rstrip()
@@ -62,6 +88,7 @@ class DebUrlParser(RepoUrlParser):
 
     def get_repo_config(self, name, url):
         baseurl, suite, section = url.split(" ", 2)
+        name = self.get_name(name, suite)
         return {
             "name": name,
             "section": section,
@@ -72,14 +99,15 @@ class DebUrlParser(RepoUrlParser):
 
 
 class YumUrlParser(RepoUrlParser):
-    def get_name(self, first_name, uri):
-        return "-".join((first_name, uri))
-
     def join(self, baseurl, uri):
         baseurl = baseurl.rstrip("/")
         return "/".join((baseurl, uri))
 
     def get_repo_config(self, name, url):
+        comp = url.rsplit("/", 1)[-1]
+        if comp != "os":
+            name = "-".join((name, comp))
+
         return {
             "name": name,
             "type": "rpm",

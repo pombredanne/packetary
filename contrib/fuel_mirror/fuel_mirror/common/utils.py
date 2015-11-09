@@ -12,14 +12,42 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
 import six
+import subprocess
+import yaml
 
 
-def filter_in_set(choices, iterable, key=None, attr=None):
-    """Filters by next(data)[field] in choices."""
+if not hasattr(subprocess, 'check_output'):
+    # checkoutput does not available in python 2.6
 
-    choices = set(choices)
+    def __check_output(*popenargs, **kwargs):
+        if 'stdout' in kwargs:
+            raise ValueError('stdout argument not allowed, it will be overridden.')
+        p = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+        output, unused_err = p.communicate()
+        retcode = p.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd)
+        return output
+
+    subprocess.check_output = __check_output
+
+
+def filter_from_choices(choices, iterable, key=None, attr=None):
+    """Filters by next(data)[field] in choices.
+
+    :param choices: the sequence of possible values
+    :param iterable: the sequence of dicts or objects
+    :param key: the key to compare
+    :param attr: the attribute name to compare
+    """
+
+    if not isinstance(choices, set):
+        choices = set(choices)
+
     if key is not None and attr is not None:
         raise ValueError("'key' and 'attr' cannot be specified"
                          "simultaneously.")
@@ -34,10 +62,15 @@ def filter_in_set(choices, iterable, key=None, attr=None):
     return six.moves.filter(function, iterable)
 
 
-def find_by_attributes(iterable, **attributes):
-    """Finds element by attributes."""
+def find_by_criteria(iterable, **criteria):
+    """Finds first dict that has specified keywords.
+
+    :param iterable: the sequence of dicts
+    :param criteria: the key=value pairs for compare
+    :return: first element that meets criteria or None if not found.
+    """
     for i in iterable:
-        for k, v in six.iteritems(attributes):
+        for k, v in six.iteritems(criteria):
             if i.get(k) != v:
                 break
         else:
@@ -45,9 +78,14 @@ def find_by_attributes(iterable, **attributes):
 
 
 def lists_merge(main, patch, key):
-    """Merges the list of dicts with same keys."""
+    """Merges the list of dicts with same keys.
 
-    main = copy.copy(main)
+    :param main: the main list
+    :type main: list
+    :param patch: the list of additional elements
+    :type patch: list
+    :param key: the key for compare
+    """
     main_idx = dict(
         (x[key], i) for i, x in enumerate(main)
     )
@@ -62,4 +100,36 @@ def lists_merge(main, patch, key):
         else:
             main.append(patch[patch_idx[k]])
 
-    return main
+
+def first(*args):
+    """Get first not empty value.
+
+    :param args: the list of arguments
+    :return first value that bool(v) is True, None if not found.
+    """
+    for arg in args:
+        if arg:
+            return arg
+
+
+def get_fuel_settings():
+    """Gets the fuel settings from astute container."""
+
+    _DEFAULT_SETTINGS = {
+        "server": "10.20.0.2",
+        "user": None,
+        "password": None,
+    }
+
+    try:
+        settings = yaml.load(subprocess.check_output(
+            ["dockerctl", "shell", "astute", "cat", "/etc/fuel/astute.yaml"]
+        ))
+        return {
+            "server": settings.get("ADMIN_NETWORK", {}).get("ipaddress"),
+            "user": settings.get("FUEL_ACCESS", {}).get("user"),
+            "password": settings.get("FUEL_ACCESS", {}).get("password")
+        }
+    except (subprocess.CalledProcessError, OSError):
+        pass
+    return _DEFAULT_SETTINGS

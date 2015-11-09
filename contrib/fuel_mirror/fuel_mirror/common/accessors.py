@@ -17,7 +17,10 @@ import os
 
 
 def get_packetary_accessor(**kwargs):
-    """Gets the configured repository manager."""
+    """Gets the configured repository manager.
+
+    :param kwargs: The packetary configuration parameters.
+    """
 
     import packetary
 
@@ -27,17 +30,23 @@ def get_packetary_accessor(**kwargs):
     )
 
 
-def get_fuel_api_accessor(fuel_address=None, fuel_password=None):
-    """Gets the fuel client api accessor."""
-    if fuel_address:
-        host_and_port = fuel_address.split(":")
+def get_fuel_api_accessor(address=None, user=None, password=None):
+    """Gets the fuel client api accessor.
+
+    :param address: The address of Fuel Master node.
+    :param user: The username to access to the Fuel Master node.
+    :param user: The password to access to the Fuel Master node.
+    """
+    if address:
+        host_and_port = address.split(":")
         os.environ["SERVER_ADDRESS"] = host_and_port[0]
         if len(host_and_port) > 1:
             os.environ["LISTEN_PORT"] = host_and_port[1]
 
-    if fuel_password is not None:
-        os.environ["KEYSTONE_USER"] = "admin"
-        os.environ["KEYSTONE_PASS"] = fuel_password
+    if user is not None:
+        os.environ["KEYSTONE_USER"] = user
+    if password is not None:
+        os.environ["KEYSTONE_PASS"] = password
 
     # import fuelclient.ClientAPI after configuring
     # environment variables

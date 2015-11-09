@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-
 from cliff import app
 from cliff.commandmanager import CommandManager
 import yaml
@@ -23,6 +21,7 @@ import yaml
 
 import fuel_mirror
 from fuel_mirror.common import accessors
+from fuel_mirror.common import utils
 
 
 class Application(app.App):
@@ -57,8 +56,13 @@ class Application(app.App):
             help="The public address of Fuel Master."
         )
         parser.add_argument(
-            "-P", "--fuel-password",
-            help="Fuel Master admin password (defaults to admin)."
+            "--fuel-user",
+            help="Fuel Master admin login."
+                 " Alternatively, use env var KEYSTONE_USER)."
+        )
+        parser.add_argument(
+            "--fuel-password",
+            help="Fuel Master admin password."
                  " Alternatively, use env var KEYSTONE_PASSWORD)."
         )
         return parser
@@ -67,12 +71,34 @@ class Application(app.App):
         with open(self.options.config, "r") as stream:
             config = yaml.load(stream)
 
+        fuel_default = utils.get_fuel_settings()
         self.config = config['common']
         self.versions = config["versions"]
         self.sources = config['sources']
+
+        fuel_server = utils.first(
+            self.options.fuel_server,
+            self.config.get("fuel_server"),
+            fuel_default["server"]
+        )
+        fuel_user = utils.first(
+            self.options.fuel_user,
+            fuel_default["user"]
+        )
+        fuel_password = utils.first(
+            self.options.fuel_password,
+            fuel_default["password"]
+        )
+        self.config.setdefault(
+            "base_url", "http://{0}:8080".format(
+                fuel_server.split(":", 1)[0]
+            )
+        )
+
         self.fuel = accessors.get_fuel_api_accessor(
-            self.options.fuel_server or self.config.get('fuel_server'),
-            self.options.fuel_password
+            fuel_server,
+            fuel_user,
+            fuel_password
         )
         fuel_ver = self.fuel.FuelVersion.get_all_data()
         self.versions['mos_version'] = fuel_ver['release']
@@ -80,7 +106,7 @@ class Application(app.App):
 
         self.repo_manager_accessor = accessors.get_packetary_accessor(
             thread_count=int(self.config.get('thread_count', 0)),
-            retries_count=int(self.config.get('retry_count', 0)),
+            retries_count=int(self.config.get('retries_count', 0)),
             ignore_error_count=int(self.config.get('ignore_error_count', 0)),
             http_proxy=self.config.get('http_proxy'),
             https_proxy=self.config.get('https_proxy'),
@@ -102,11 +128,7 @@ def debug(name, cmd_class, argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    argv = [name] + argv + [
-        "-v", "-v", "--debug", '-P', "admin",
-        "--config",
-        os.path.join(os.path.dirname(__file__), "..", "etc", "config.yaml")]
-
+    argv = [name] + argv + ["-v", "-v", "--debug"]
     cmd_mgr = CommandManager("test_fuel_mirror", convert_underscores=True)
     cmd_mgr.add_command(name, cmd_class)
     return Application(
