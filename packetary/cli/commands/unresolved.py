@@ -25,7 +25,7 @@ class ListUnresolved(BaseProduceOutputCommand):
     )
 
     def take_repo_action(self, api, parsed_args):
-        return api.get_unresolved_depends(parsed_args.origins)
+        return api.get_unresolved_dependencies(parsed_args.origins)
 
 
 def debug(argv=None):

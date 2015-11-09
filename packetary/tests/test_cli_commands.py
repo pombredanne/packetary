@@ -43,9 +43,9 @@ from packetary.tests.stubs.helpers import CallbacksAdapter
 )
 class TestCliCommands(base.TestCase):
     common_argv = [
-        "--ignore-error-count=3",
-        "--thread-count=8",
-        "--retries-count=10",
+        "--ignore-errors-num=3",
+        "--threads-num=8",
+        "--retries-num=10",
         "--http-proxy=http://proxy",
         "--https-proxy=https://proxy"
     ]
@@ -76,8 +76,8 @@ class TestCliCommands(base.TestCase):
         cmd.debug(argv + self.common_argv)
 
     def check_context(self, context, ConnectionsManager):
-        self.assertEqual(3, context._ignore_error_count)
-        self.assertEqual(8, context._thread_count)
+        self.assertEqual(3, context._ignore_errors_num)
+        self.assertEqual(8, context._threads_num)
         self.assertIs(context._connection, ConnectionsManager.return_value)
         ConnectionsManager.assert_called_once_with(
             proxy="http://proxy",

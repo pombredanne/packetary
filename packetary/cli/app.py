@@ -33,21 +33,21 @@ class Application(app.App):
                                             argparse_kwargs=argparse_kwargs)
 
         parser.add_argument(
-            "--ignore-error-count",
+            "--ignore-errors-num",
             type=int,
             default=2,
             metavar="NUMBER",
             help="The number of errors that can be ignored."
         )
         parser.add_argument(
-            "--retries-count",
+            "--retries-num",
             type=int,
             default=5,
             metavar="NUMBER",
             help="The number of retries."
         )
         parser.add_argument(
-            "--thread-count",
+            "--threads-num",
             default=3,
             type=int,
             metavar="NUMBER",

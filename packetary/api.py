@@ -50,9 +50,9 @@ class Configuration(object):
 
         self.http_proxy = http_proxy
         self.https_proxy = https_proxy
-        self.ignore_error_count = ignore_errors_num
+        self.ignore_errors_num = ignore_errors_num
         self.retries_num = retries_num
-        self.thread_count = threads_num
+        self.threads_num = threads_num
 
 
 class Context(object):
@@ -66,10 +66,10 @@ class Context(object):
         self._connection = ConnectionsManager(
             proxy=config.http_proxy,
             secure_proxy=config.https_proxy,
-            retries_num=config.retries_count
+            retries_num=config.retries_num
         )
-        self._thread_count = config.thread_count
-        self._ignore_error_count = config.ignore_error_count
+        self._threads_num = config.threads_num
+        self._ignore_errors_num = config.ignore_errors_num
 
     @property
     def connection(self):
@@ -83,62 +83,66 @@ class Context(object):
                                   the class value is used if omitted.
         """
         if ignore_errors_num is None:
-            ignore_errors_num = self._ignore_error_count
+            ignore_errors_num = self._ignore_errors_num
 
-        return AsynchronousSection(self._thread_count, ignore_errors_num)
+        return AsynchronousSection(self._threads_num, ignore_errors_num)
 
 
 class RepositoryApi(object):
-    """Repository Manager."""
+    """Provides high-level API to operate with repositories."""
+
     def __init__(self, controller):
         """Initialises.
 
-        :param controller: the repository controller."""
+        :param controller: the repository controller.
+        """
         self.controller = controller
 
     @classmethod
-    def create(cls, config, kind, arch):
-        """Creates the repository manager.
+    def create(cls, config, repotype, repoarch):
+        """Creates the repository API instance.
 
         :param config: the configuration
-        :param kind: the kind of repository(deb, yum, etc)
-        :param arch: the architecture of repository (x86_64 or i386)
+        :param repotype: the kind of repository(deb, yum, etc)
+        :param repoarch: the architecture of repository (x86_64 or i386)
         """
-        if isinstance(config, Context):
-            context = config
-        else:
-            context = Context(config)
+        context = config if isinstance(config, Context) else Context(config)
+        return cls(RepositoryController.load(context, repotype, repoarch))
 
-        return cls(RepositoryController.load(context, kind, arch))
-
-    def get_packages(self, origin, debs=None, bootstrap=None):
+    def get_packages(self, origin, debs=None, requirements=None):
         """Gets the list of packages from repository(es).
 
-        :param origin: the url(s) to origin repository
-        :param debs: the url(s) of repositories to get dependency
-        :param bootstrap: the list of additional package names
-        :return: set of packages
+        :param origin: The list of repository`s URLs
+        :param debs: the list of repository`s URL to calculate list of
+                     dependencies, that will be used to filter packages.
+        :param requirements: the list of package relations,
+                        to resolve the list of mandatory packages.
+        :return: the set of packages
         """
         repositories = self._get_repositories(origin)
-        return self._get_packages(repositories, debs, bootstrap)
+        return self._get_packages(repositories, debs, requirements)
 
     def clone_repositories(self, origin, destination, debs=None,
-                           bootstrap=None, keep_existing=True,
+                           requirements=None, keep_existing=True,
                            include_source=False, include_locale=False):
-        """Creates clone of repository(es).
+        """Creates the clones of specified repositories in local folder.
 
-        :param destination: the destination folder
-        :param origin: the url(s) to origin repository
-        :param debs: the url(s) of repositories to get dependency
-        :param bootstrap: the list of additional package names
+        :param origin: The list of repository`s URLs
+        :param destination: the destination folder path
+        :param debs: the list of repository`s URL to calculate list of
+                     dependencies, that will be used to filter packages.
+        :param requirements: the list of package relations,
+                        to resolve the list of mandatory packages.
         :param keep_existing: If False - local packages that does not exist
                               in original repo will be removed.
-        :param include_source: if True, the source packages will be copied too.
-        :param include_locale: if True, the locales will be copied too.
-        :return: Statistics of copied and total packages
+        :param include_source: if True, the source packages
+                               will be copied as well.
+        :param include_locale: if True, the locales
+                               will be copied as well.
+        :return: count of copied and total packages.
         """
         repositories = self._get_repositories(origin)
-        packages = self._get_packages(repositories, debs, bootstrap)
+        packages = self._get_packages(repositories, debs, requirements)
         mirrors = self.controller.clone_repositories(
             repositories, destination, include_source, include_locale
         )
@@ -156,18 +160,18 @@ class RepositoryApi(object):
             )
         return stat
 
-    def get_unresolved_depends(self, urls):
-        """Gets list of unresolved depends for repository(es).
+    def get_unresolved_dependencies(self, urls):
+        """Gets list of unresolved dependencies for repository(es).
 
-        :param urls: the url(s) of repository
-        :return: list of unresolved relations
+        :param urls: The list of repository`s URLs
+        :return: list of unresolved dependencies
         """
         packages = PackagesTree()
         self.controller.load_packages(
             self._get_repositories(urls),
             packages.add
         )
-        return packages.get_unresolved_depends()
+        return packages.get_unresolved_dependencies()
 
     def _get_repositories(self, urls):
         """Gets the set of repositories by url."""
@@ -193,14 +197,17 @@ class RepositoryApi(object):
         else:
             main_index = None
 
-        requirements = self._parse_requirements(requirements)
-        return packages.get_minimal_subset(main_index, requirements)
+        return packages.get_minimal_subset(
+            main_index,
+            self._parse_requirements(requirements)
+        )
 
     @staticmethod
     def _parse_requirements(requirements):
         """Gets the list of relations from requirements.
-        :param requirements: the list of requirement in next format.
-                             "name [comparison edge]|[alternative [comparison edge]]
+
+        :param requirements: the list of requirement in next format:
+                             'name [cmp version]|[alt [cmp version]]'
         """
         if requirements is not None:
             return set(

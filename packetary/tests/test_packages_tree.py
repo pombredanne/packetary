@@ -26,7 +26,7 @@ class TestPackagesTree(base.TestCase):
     def setUp(self):
         super(TestPackagesTree, self).setUp()
 
-    def test_get_unresolved_depends(self):
+    def test_get_unresolved_dependencies(self):
         ptree = PackagesTree()
         ptree.add(generator.gen_package(
             1, requires=[generator.gen_relation("unresolved")]))
@@ -40,7 +40,7 @@ class TestPackagesTree(base.TestCase):
             obsoletes=[generator.gen_relation("loop", ["le", 1])]
         ))
 
-        unresolved = ptree.get_unresolved_depends()
+        unresolved = ptree.get_unresolved_dependencies()
         self.assertItemsEqual(
             ["loop", "unresolved"],
             (x.name for x in unresolved)

@@ -14,6 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
+from packetary.api import Configuration
+from packetary.api import Context
 from packetary.api import RepositoryApi
 from packetary.tests import base
 from packetary.tests.stubs import generator
@@ -160,7 +164,7 @@ class TestRepositoryApi(base.TestCase):
             pkg
         ]
         api = RepositoryApi(controller)
-        r = api.get_unresolved_depends("file:///repo1")
+        r = api.get_unresolved_dependencies("file:///repo1")
         controller.load_repositories.assert_called_once_with("file:///repo1")
         self.assertItemsEqual(
             ["test2"],
@@ -189,3 +193,38 @@ class TestRepositoryApi(base.TestCase):
             list(expected),
             list(requirements.pop())
         )
+
+
+class TestContext(base.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.config = Configuration(
+            threads_num=2,
+            ignore_errors_num=3,
+            retries_num=5,
+            http_proxy="http://localhost",
+            https_proxy="https://localhost"
+        )
+
+    @mock.patch("packetary.api.ConnectionsManager")
+    def test_initialise_connection_manager(self, conn_manager):
+        context = Context(self.config)
+        conn_manager.assert_called_once_with(
+            proxy="http://localhost",
+            secure_proxy="https://localhost",
+            retries_num=5
+        )
+
+        self.assertIs(
+            conn_manager(),
+            context.connection
+        )
+
+    @mock.patch("packetary.api.AsynchronousSection")
+    def test_asynchronous_section(self, async_section):
+        context = Context(self.config)
+        s = context.async_section()
+        async_section.assert_called_with(2, 3)
+        self.assertIs(s, async_section())
+        context.async_section(0)
+        async_section.assert_called_with(2, 0)
