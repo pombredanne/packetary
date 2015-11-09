@@ -37,14 +37,13 @@ from fuel_mirror.tests import base
 class TestCliCommands(base.TestCase):
     common_argv = [
         "--config=/etc/fuel-mirror/config.yaml",
-        "--fuel-server=10.25.0.2",
+        "--fuel-server=10.25.0.10",
         "--fuel-user=test",
         "--fuel-password=test1"
     ]
 
-    apply_argv = [
-        "--default",
-        "--env 1"
+    apply_argv_with_env = [
+        "--env", "1"
     ]
 
     create_argv = [
@@ -60,47 +59,230 @@ class TestCliCommands(base.TestCase):
 
     def test_create_cmd(self, accessors, yaml, open):
         yaml.load.return_value = _DEFAULT_CONFIG
+        fuel = accessors.get_fuel_api_accessor()
+        fuel.Release.get_all.return_value = [
+            mock.MagicMock(data={
+                "operating_system": "Ubuntu",
+                "attributes_metadata": {
+                    "editable": {"repo_setup": {"repos": {"value": []}}}
+                }
+            })
+        ]
+        packetary = accessors.get_packetary_accessor()
+
         self.start_cmd(create, self.create_argv)
         open.assert_called_once_with(
             "/etc/fuel-mirror/config.yaml", "r"
         )
         yaml.load.assert_called_once_with(open().__enter__())
-        accessors.get_packetary_accessor.assert_called_once_with(
-            thread_count=1,
-            ignore_error_count=2,
-            retries_count=3,
+        accessors.get_packetary_accessor.assert_called_with(
+            threads_num=1,
+            ignore_errors_num=2,
+            retries_num=3,
             http_proxy="http://localhost",
             https_proxy="https://localhost",
         )
-        packetary = accessors.get_packetary_accessor()
         packetary.assert_called_with("deb", "x86_64")
         self.assertEqual(2, packetary.call_count)
-        rm = packetary()
-        rm.clone_repositories.assert_any_call(
+        api = packetary()
+        api.clone_repositories.assert_any_call(
             ['http://localhost/mos/2 mos main'],
             '/var/www/nailgun/mirror/mos/ubuntu',
             None,
             None
         )
-        rm.clone_repositories.assert_any_call(
+        api.clone_repositories.assert_any_call(
             ['http://localhost/ubuntu/2 trusty main'],
             '/var/www/nailgun/mirror/ubuntu',
             ['file:///var/www/nailgun/mirror/mos/ubuntu mos main'],
             ['ubuntu-minimal']
         )
+        accessors.get_fuel_api_accessor.assert_called_with(
+            "10.25.0.10", "test", "test1"
+        )
+        fuel.FuelVersion.get_all_data.assert_called_once_with()
+        fuel.Release.get_all.assert_called_once_with()
+        release = fuel.Release.get_all.return_value[0]
+        release.connection.put_request.assert_called_once_with(
+            release.instance_api_path.format(),
+            {
+                'operating_system': 'Ubuntu',
+                'attributes_metadata': {
+                    'editable': {
+                        'repo_setup': {
+                            'repos': {
+                                'value': [
+                                    {
+                                        'suite': 'mos',
+                                        'section': 'main',
+                                        'type': 'deb',
+                                        'name': 'mos',
+                                        'uri': 'http://10.25.0.10:8080'
+                                               '/mirror/mos/ubuntu'
+                                    },
+                                    {
+                                        'suite': 'trusty',
+                                        'section': 'main',
+                                        'type': 'deb',
+                                        'name': 'ubuntu',
+                                        'uri': 'http://10.25.0.10:8080'
+                                               '/mirror/ubuntu'
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        )
 
-    def test_update_cmd(self, accessor, yaml, open):
-        self.start_cmd(create, self.create_argv)
+    def test_update_cmd(self, accessors, yaml, open):
+        yaml.load.return_value = _DEFAULT_CONFIG
+        packetary = accessors.get_packetary_accessor()
+        self.start_cmd(update, self.update_argv)
+        open.assert_called_once_with(
+            "/etc/fuel-mirror/config.yaml", "r"
+        )
+        yaml.load.assert_called_once_with(open().__enter__())
+        accessors.get_packetary_accessor.assert_called_with(
+            threads_num=1,
+            ignore_errors_num=2,
+            retries_num=3,
+            http_proxy="http://localhost",
+            https_proxy="https://localhost",
+        )
+        packetary.assert_called_with("yum", "x86_64")
+        self.assertEqual(2, packetary.call_count)
+        api = packetary()
+        api.clone_repositories.assert_any_call(
+            ['http://localhost/centos/1/os'],
+            '/var/www/nailgun/mirror/centos',
+            None,
+            None
+        )
+        api.clone_repositories.assert_any_call(
+            ['http://localhost/mos/1/os'],
+            '/var/www/nailgun/mirror/mos/centos',
+            None,
+            None
+        )
 
-    def test_applyd_cmd(self, accessor, yaml, open):
-        self.start_cmd(create, self.create_argv)
+    def test_apply_cmd_for_env(self, accessors, yaml, open):
+        yaml.load.return_value = _DEFAULT_CONFIG
+        fuel = accessors.get_fuel_api_accessor()
+        env = mock.MagicMock(data={"release_id": 1})
+        env.get_settings_data.return_value = {
+            "editable": {"repo_setup": {"repos": {"value": []}}}
+        }
+        fuel.Environment.get_by_ids.return_value = [env]
+        fuel.Release.get_by_ids.return_value = [
+            mock.MagicMock(data={
+                "operating_system": "Ubuntu",
+                "attributes_metadata": {
+                    "editable": {"repo_setup": {"repos": {"value": []}}}
+                }
+            })
+        ]
+
+        self.start_cmd(apply, self.apply_argv_with_env)
+        open.assert_called_once_with(
+            "/etc/fuel-mirror/config.yaml", "r"
+        )
+        yaml.load.assert_called_once_with(open().__enter__())
+        accessors.get_fuel_api_accessor.assert_called_with(
+            "10.25.0.10", "test", "test1"
+        )
+        fuel.FuelVersion.get_all_data.assert_called_once_with()
+        env.set_settings_data.assert_called_with(
+            {
+                "editable": {
+                    'repo_setup': {
+                        'repos': {
+                            'value': [
+                                {
+                                    'suite': 'mos',
+                                    'section': 'main',
+                                    'type': 'deb',
+                                    'name': 'mos',
+                                    'uri': 'http://10.25.0.10:8080'
+                                           '/mirror/mos/ubuntu'
+                                },
+                                {
+                                    'suite': 'trusty',
+                                    'section': 'main',
+                                    'type': 'deb',
+                                    'name': 'ubuntu',
+                                    'uri': 'http://10.25.0.10:8080'
+                                           '/mirror/ubuntu'
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        )
+
+    def test_apply_cmd_for_all(self, accessors, yaml, open):
+        yaml.load.return_value = _DEFAULT_CONFIG
+        fuel = accessors.get_fuel_api_accessor()
+        env = mock.MagicMock(data={"release_id": 1})
+        env.get_settings_data.return_value = {
+            "editable": {"repo_setup": {"repos": {"value": []}}}
+        }
+        fuel.Environment.get_all.return_value = [env]
+        fuel.Release.get_by_ids.return_value = [
+            mock.MagicMock(data={
+                "operating_system": "Ubuntu",
+                "attributes_metadata": {
+                    "editable": {"repo_setup": {"repos": {"value": []}}}
+                }
+            })
+        ]
+
+        self.start_cmd(apply, [])
+        open.assert_called_once_with(
+            "/etc/fuel-mirror/config.yaml", "r"
+        )
+        yaml.load.assert_called_once_with(open().__enter__())
+        accessors.get_fuel_api_accessor.assert_called_with(
+            "10.25.0.10", "test", "test1"
+        )
+        fuel.FuelVersion.get_all_data.assert_called_once_with()
+        env.set_settings_data.assert_called_with(
+            {
+                "editable": {
+                    'repo_setup': {
+                        'repos': {
+                            'value': [
+                                {
+                                    'suite': 'mos',
+                                    'section': 'main',
+                                    'type': 'deb',
+                                    'name': 'mos',
+                                    'uri': 'http://10.25.0.10:8080'
+                                           '/mirror/mos/ubuntu'
+                                },
+                                {
+                                    'suite': 'trusty',
+                                    'section': 'main',
+                                    'type': 'deb',
+                                    'name': 'ubuntu',
+                                    'uri': 'http://10.25.0.10:8080'
+                                           '/mirror/ubuntu'
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        )
 
 
 _DEFAULT_CONFIG = {
     "common": {
-        "thread_count": 1,
-        "ignore_error_count": 2,
-        "retries_count": 3,
+        "threads_num": 1,
+        "ignore_errors_num": 2,
+        "retries_num": 3,
         "http_proxy": "http://localhost",
         "https_proxy": "https://localhost",
         "target_dir": "/var/www/nailgun"
@@ -139,7 +321,7 @@ _DEFAULT_CONFIG = {
                 "trusty main"
             ],
             "bootstrap": [
-               "ubuntu-minimal"
+                "ubuntu-minimal"
             ]
         },
         {

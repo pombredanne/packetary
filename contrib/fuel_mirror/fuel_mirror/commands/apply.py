@@ -24,14 +24,14 @@ class ApplyCommand(BaseCommand, FuelCommandMixin):
     def get_parser(self, prog_name):
         parser = super(ApplyCommand, self).get_parser(prog_name)
         parser.add_argument(
-            "-d", "--default",
+            "--default",
             dest="set_default",
             action="store_true",
             default=False,
             help="Set as default repository."
         )
         parser.add_argument(
-            "-e", "--env",
+            "--env",
             dest="env", nargs="+",
             help="Fuel environment ID to update, "
                  "by default applies for all environments."

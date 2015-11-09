@@ -105,9 +105,9 @@ class Application(app.App):
         self.versions['openstack_version'] = fuel_ver['openstack_version']
 
         self.repo_manager_accessor = accessors.get_packetary_accessor(
-            thread_count=int(self.config.get('thread_count', 0)),
-            retries_count=int(self.config.get('retries_count', 0)),
-            ignore_error_count=int(self.config.get('ignore_error_count', 0)),
+            threads_num=int(self.config.get('threads_num', 0)),
+            retries_num=int(self.config.get('retries_num', 0)),
+            ignore_errors_num=int(self.config.get('ignore_errors_num', 0)),
             http_proxy=self.config.get('http_proxy'),
             https_proxy=self.config.get('https_proxy'),
         )

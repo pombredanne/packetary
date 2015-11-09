@@ -22,7 +22,7 @@ class CreateCommand(CopyRepositoryCommand, FuelCommandMixin):
     def get_parser(self, prog_name):
         parser = super(CreateCommand, self).get_parser(prog_name)
         parser.add_argument(
-            "-d", "--default",
+            "--default",
             dest="set_default",
             action="store_true",
             default=False,

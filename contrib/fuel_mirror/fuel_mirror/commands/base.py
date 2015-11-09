@@ -98,7 +98,7 @@ class BaseCommand(command.Command):
             name = config["name"]
             osname = config["osname"]
             url_parser = get_url_parser(config["type"])
-            folder = name, osname if osname != name else name,
+            folder = (name, osname) if osname != name else (name,)
             url = "/".join((base_url, "mirror") + folder)
             os_repos = result.setdefault(osname, [])
             for repo in config["repositories"]:
@@ -161,7 +161,7 @@ class CopyRepositoryCommand(BaseCommand):
             repo_type, "x86_64"
         )
         url_parser = get_url_parser(repo_type)
-        sub_folder = name, osname if osname != name else name,
+        sub_folder = (name, osname) if osname != name else (name,)
         destination = os.path.abspath(
             os.path.join(folder, "mirror", *sub_folder)
         )
@@ -206,9 +206,11 @@ class FuelCommandMixin(object):
     def update_clusters(self, repositories, ids=None):
         """Applies repositories for existing clusters."""
         self.app.LOG.info("Updating repositories...")
-        clusters = self.app.fuel.Environment.get_all()
+
         if ids:
-            clusters = filter_from_choices(ids, clusters, attr="id")
+            clusters = self.app.fuel.Environment.get_by_ids(ids)
+        else:
+            clusters = self.app.fuel.Environment.get_all()
 
         for cluster in clusters:
             release = self.app.fuel.Release.get_by_ids(

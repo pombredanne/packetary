@@ -27,18 +27,18 @@ class TestAccessors(base.TestCase):
             accessor = accessors.get_packetary_accessor(
                 http_proxy="http://localhost",
                 https_proxy="https://localhost",
-                retries_count=1,
-                thread_count=2,
-                ignore_error_count=3
+                retries_num=1,
+                threads_num=2,
+                ignore_errors_num=3
             )
             accessor("deb")
             accessor("yum")
             packetary.Configuration.assert_called_once_with(
                 http_proxy="http://localhost",
                 https_proxy="https://localhost",
-                retries_count=1,
-                thread_count=2,
-                ignore_error_count=3
+                retries_num=1,
+                threads_num=2,
+                ignore_errors_num=3
             )
             packetary.Context.assert_called_once_with(
                 packetary.Configuration()
