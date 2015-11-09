@@ -48,11 +48,11 @@ class TestCliCommands(base.TestCase):
     ]
 
     create_argv = [
-        "--full", "--no-apply", "--default"
+        "--no-apply", "--default", "-U"
     ]
 
     update_argv = [
-        "-U"
+        "-C", "--full"
     ]
 
     def start_cmd(self, cmd, argv):
@@ -73,9 +73,21 @@ class TestCliCommands(base.TestCase):
             https_proxy="https://localhost",
         )
         packetary = accessors.get_packetary_accessor()
-        packetary.assert_any_call("yum", "x86_64")
-        packetary.assert_any_call("deb", "x86_64")
+        packetary.assert_called_with("deb", "x86_64")
         self.assertEqual(2, packetary.call_count)
+        rm = packetary()
+        rm.clone_repositories.assert_any_call(
+            ['http://localhost/mos/2 mos main'],
+            '/var/www/nailgun/mirror/mos/ubuntu',
+            None,
+            None
+        )
+        rm.clone_repositories.assert_any_call(
+            ['http://localhost/ubuntu/2 trusty main'],
+            '/var/www/nailgun/mirror/ubuntu',
+            ['file:///var/www/nailgun/mirror/mos/ubuntu mos main'],
+            ['ubuntu-minimal']
+        )
 
     def test_update_cmd(self, accessor, yaml, open):
         self.start_cmd(create, self.create_argv)
@@ -122,9 +134,9 @@ _DEFAULT_CONFIG = {
             "osname": "ubuntu",
             "type": "deb",
             "master": "mos",
-            "baseurl": "http://localhost/ubuntu",
+            "baseurl": "http://localhost/ubuntu/{ubuntu_version}",
             "repositories": [
-                "{ubuntu_version} main"
+                "trusty main"
             ],
             "bootstrap": [
                "ubuntu-minimal"
